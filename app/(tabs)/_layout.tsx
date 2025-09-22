@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Redirect } from 'expo-router';
 import { StyleSheet } from 'react-native';
-import { Home, Compass, BookOpen, Settings } from 'lucide-react-native';
+import { Chrome as Home, Compass, BookOpen, Settings } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
