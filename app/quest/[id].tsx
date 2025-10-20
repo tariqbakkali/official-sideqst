@@ -53,6 +53,7 @@ export default function QuestDetailScreen() {
   const [fullscreenPhotos, setFullscreenPhotos] = useState<string[]>([]);
   const [fullscreenInitialIndex, setFullscreenInitialIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [creatorName, setCreatorName] = useState<string>('Anonymous');
 
   const handlePhotoPress = (photos: string[], index: number) => {
     setFullscreenPhotos(photos);
@@ -96,6 +97,19 @@ export default function QuestDetailScreen() {
       // Check if this quest belongs to the current user
       const isOwned = userData.user?.id === data.created_by;
       setIsUserQuest(isOwned);
+
+      // Load creator name
+      if (data.created_by) {
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('display_name')
+          .eq('user_id', data.created_by)
+          .maybeSingle();
+
+        if (profileData?.display_name) {
+          setCreatorName(profileData.display_name);
+        }
+      }
 
       // Load quest steps
       const steps = await questService.getQuestSteps(id);
@@ -471,7 +485,7 @@ export default function QuestDetailScreen() {
               <View style={styles.infoRow}>
                 <User size={16} color="#888888" />
                 <Text style={styles.infoLabel}>Created by</Text>
-                <Text style={styles.infoValue}>Quest Creator</Text>
+                <Text style={styles.infoValue}>{creatorName}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Calendar size={16} color="#888888" />
