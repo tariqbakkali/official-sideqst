@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   RefreshControl,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -250,6 +251,7 @@ export default function FeedScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
 
   const filterOptions = [
     { id: 'online', label: 'Online' },
@@ -262,6 +264,7 @@ export default function FeedScreen() {
 
   useEffect(() => {
     loadQuests();
+    loadProfilePhoto();
   }, []);
 
   useEffect(() => {
@@ -286,6 +289,25 @@ export default function FeedScreen() {
       console.error('Error loading quests:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProfilePhoto = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('photo_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data?.photo_url) {
+        setProfilePhotoUrl(data.photo_url);
+      }
+    } catch (error) {
+      console.error('Error loading profile photo:', error);
     }
   };
 
@@ -416,9 +438,16 @@ export default function FeedScreen() {
               onPress={() => router.push('/profile/edit')}
               activeOpacity={0.7}
             >
-              <Text style={styles.avatarText}>
-                {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || '👤'}
-              </Text>
+              {profilePhotoUrl ? (
+                <Image
+                  source={{ uri: profilePhotoUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || '👤'}
+                </Text>
+              )}
             </TouchableOpacity>
             <View>
               <Text style={styles.greeting}>
@@ -506,6 +535,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
   },
   avatarText: {
     fontSize: 20,
