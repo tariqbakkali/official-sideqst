@@ -270,7 +270,10 @@ export default function FilterResultsScreen() {
           radius_miles: parseFloat(radius)
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error calling find_nearby_quests:', error);
+          throw error;
+        }
         filteredQuests = nearbyQuests || [];
       } else {
         // Get all public quests for other filters
@@ -329,9 +332,10 @@ export default function FilterResultsScreen() {
       } else {
         setQuests(filteredQuests);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading filtered quests:', error);
-      Alert.alert('Error', 'Failed to load quests');
+      const errorMessage = error?.message || 'Failed to load quests';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
