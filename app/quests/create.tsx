@@ -238,7 +238,7 @@ export default function CreateQuestScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always">
           {/* Basic Info */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Basic Information</Text>
@@ -377,7 +377,7 @@ export default function CreateQuestScreen() {
           </View>
 
           {/* Location */}
-          <View style={styles.section}>
+          <View style={[styles.section, styles.locationSection]}>
             <Text style={styles.sectionTitle}>Location</Text>
             
             <View style={styles.locationTypeContainer}>
@@ -569,6 +569,10 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 32,
+  },
+  locationSection: {
+    zIndex: 1000,
+    elevation: 1000,
   },
   sectionTitle: {
     fontSize: 20,
