@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 
 class StorageService {
   /**
@@ -29,18 +31,34 @@ class StorageService {
 
       console.log('[StorageService] File path:', filePath);
 
-      const response = await fetch(uri);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-      }
+      let fileData: Blob | ArrayBuffer;
+      let contentType = 'image/jpeg';
 
-      const blob = await response.blob();
-      console.log('[StorageService] Blob created, size:', blob.size, 'type:', blob.type);
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+        }
+        fileData = await response.blob();
+        contentType = (fileData as Blob).type || 'image/jpeg';
+        console.log('[StorageService] Blob created (web), size:', (fileData as Blob).size, 'type:', contentType);
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        fileData = new Uint8Array(byteNumbers).buffer;
+        console.log('[StorageService] ArrayBuffer created (native), size:', fileData.byteLength);
+      }
 
       const { data, error } = await supabase.storage
         .from(bucket)
-        .upload(filePath, blob, {
-          contentType: blob.type || 'image/jpeg',
+        .upload(filePath, fileData, {
+          contentType,
           upsert: false,
         });
 
