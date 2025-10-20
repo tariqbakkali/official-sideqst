@@ -65,6 +65,16 @@ class StorageService {
   }
 
   /**
+   * Upload a quest photo to Supabase Storage
+   * @param uri - Local file URI from ImagePicker
+   * @param userId - User ID for folder organization
+   * @returns Public URL of the uploaded file
+   */
+  async uploadQuestPhoto(uri: string, userId: string): Promise<string> {
+    return this.uploadPhoto(uri, 'quest-photos', userId);
+  }
+
+  /**
    * Upload multiple photos to Supabase Storage
    * @param uris - Array of local file URIs from ImagePicker
    * @param bucket - Storage bucket name

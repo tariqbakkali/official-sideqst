@@ -16,7 +16,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { questService, CreateQuestData } from '@/services/questService';
 import LocationInput from '@/components/LocationInput';
-import { ArrowLeft, Star, Clock, DollarSign, Camera, Plus, X } from 'lucide-react-native';
+import { ArrowLeft, Star, Clock, DollarSign, Camera, Plus, X, Upload, Image as ImageIcon } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { storageService } from '@/services/storageService';
 
 interface QuestCategory {
   id: string;
@@ -58,6 +60,7 @@ const locationTypes = [
 export default function CreateQuestScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [categories, setCategories] = useState<QuestCategory[]>([]);
   
   // Form state
@@ -119,6 +122,40 @@ export default function CreateQuestScreen() {
 
   const removeQuestStep = (index: number) => {
     setQuestSteps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    if (!user) return;
+
+    setUploading(true);
+    try {
+      const url = await storageService.uploadQuestPhoto(uri, user.id);
+      setFormData(prev => ({ ...prev, photo_url: url }));
+      Alert.alert('Success', 'Photo uploaded successfully!');
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', error.message || 'Failed to upload photo');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const updateQuestStep = (index: number, field: 'title' | 'description', value: string) => {
@@ -482,19 +519,38 @@ export default function CreateQuestScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Photo URL</Text>
-              <View style={styles.photoContainer}>
-                <Camera size={20} color="#888888" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="https://example.com/photo.jpg"
-                  placeholderTextColor="#888888"
-                  value={formData.photo_url}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, photo_url: text }))}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                />
-              </View>
+              <Text style={styles.label}>Quest Photo</Text>
+
+              {formData.photo_url ? (
+                <View style={styles.photoPreviewContainer}>
+                  <View style={styles.photoPreview}>
+                    <ImageIcon size={48} color="#B8FF00" />
+                    <Text style={styles.photoPreviewText} numberOfLines={1}>
+                      {formData.photo_url.split('/').pop()}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removePhotoButton}
+                    onPress={() => setFormData(prev => ({ ...prev, photo_url: '' }))}
+                  >
+                    <X size={20} color="#ff4757" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={pickImage}
+                  disabled={uploading}
+                >
+                  <Upload size={24} color="#B8FF00" />
+                  <Text style={styles.uploadButtonText}>
+                    {uploading ? 'Uploading...' : 'Upload Photo'}
+                  </Text>
+                  <Text style={styles.uploadButtonSubtext}>
+                    Tap to choose from gallery
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -749,6 +805,51 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderWidth: 1,
     borderColor: '#333333',
+  },
+  uploadButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333333',
+    borderStyle: 'dashed',
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  uploadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#B8FF00',
+    marginTop: 4,
+  },
+  uploadButtonSubtext: {
+    fontSize: 12,
+    color: '#888888',
+  },
+  photoPreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+    padding: 16,
+    gap: 12,
+  },
+  photoPreview: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  photoPreviewText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  removePhotoButton: {
+    padding: 8,
   },
   toggleContainer: {
     flexDirection: 'row',
