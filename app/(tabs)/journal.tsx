@@ -60,12 +60,40 @@ export default function JournalScreen() {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
     if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
     return `${Math.ceil(diffDays / 365)} years ago`;
+  };
+
+  const formatFullDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const groupQuestsByDate = () => {
+    const groups: { [key: string]: CompletedQuest[] } = {};
+    completedQuests.forEach(quest => {
+      const dateKey = new Date(quest.completed_at).toDateString();
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(quest);
+    });
+    return Object.entries(groups).map(([date, quests]) => ({ date, quests }));
+  };
+
+  const getQuestStats = () => {
+    const totalQuests = completedQuests.length;
+    const uniqueDates = new Set(completedQuests.map(q => new Date(q.completed_at).toDateString())).size;
+    return { totalQuests, uniqueDates };
   };
 
   const getQuestsForDate = (date: Date) => {
@@ -269,41 +297,95 @@ export default function JournalScreen() {
         ) : viewMode === 'calendar' ? (
           renderCalendarView()
         ) : (
-          <View style={styles.timelineContainer}>
-            <View style={styles.timeline} />
-            {completedQuests.map((quest, index) => {
-              const isLeft = index % 2 === 0;
-              const imageUrl = quest.completion_photo_url || quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
-              
-              return (
-                <View key={quest.id} style={[styles.timelineItem, isLeft ? styles.timelineItemLeft : styles.timelineItemRight]}>
-                  <View style={styles.timelineNode} />
-                  <TouchableOpacity 
-                    style={[styles.questCard, isLeft ? styles.questCardLeft : styles.questCardRight]}
-                    onPress={() => router.push(`/quest/${quest.id}`)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.questCardHeader}>
-                      <Text style={styles.questCardDate}>{formatDate(quest.completed_at)}</Text>
-                    </View>
-                    
-                    {quest.completion_photo_url && (
-                      <View style={styles.questImageContainer}>
-                        <Image 
-                          source={{ uri: quest.completion_photo_url }} 
-                          style={styles.questCardImage}
-                        />
-                      </View>
-                    )}
-                    
-                    <View style={styles.questCardContent}>
-                      <Text style={styles.questCardTitle}>{quest.name}</Text>
-                    </View>
-                  </TouchableOpacity>
+          <>
+            {completedQuests.length > 0 && (
+              <View style={styles.statsContainer}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statNumber}>{getQuestStats().totalQuests}</Text>
+                  <Text style={styles.statLabel}>Quests Completed</Text>
                 </View>
-              );
-            })}
-          </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <Text style={styles.statNumber}>{getQuestStats().uniqueDates}</Text>
+                  <Text style={styles.statLabel}>Days Active</Text>
+                </View>
+              </View>
+            )}
+            <View style={styles.timelineContainer}>
+              <View style={styles.timeline} />
+              {groupQuestsByDate().map((group, groupIndex) => {
+                return (
+                  <View key={group.date}>
+                    <View style={styles.dateHeaderContainer}>
+                      <View style={styles.dateHeaderLine} />
+                      <Text style={styles.dateHeader}>{formatDate(group.quests[0].completed_at)}</Text>
+                      <View style={styles.dateHeaderLine} />
+                    </View>
+                    {group.quests.map((quest, index) => {
+                      const isLeft = (groupIndex + index) % 2 === 0;
+
+                      return (
+                        <View key={quest.id} style={[styles.timelineItem, isLeft ? styles.timelineItemLeft : styles.timelineItemRight]}>
+                          <View style={styles.timelineNode}>
+                            <View style={styles.timelineNodeInner} />
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.questCard, isLeft ? styles.questCardLeft : styles.questCardRight]}
+                            onPress={() => router.push(`/quest/${quest.id}`)}
+                            activeOpacity={0.9}
+                          >
+                            {quest.completion_photo_url && (
+                              <View style={styles.questImageContainer}>
+                                <Image
+                                  source={{ uri: quest.completion_photo_url }}
+                                  style={styles.questCardImage}
+                                />
+                                <LinearGradient
+                                  colors={['transparent', 'rgba(0,0,0,0.6)']}
+                                  style={styles.questImageGradient}
+                                />
+                              </View>
+                            )}
+
+                            <View style={styles.questCardContent}>
+                              <Text style={styles.questCardTitle}>{quest.name}</Text>
+
+                              {quest.completion_notes && (
+                                <Text style={styles.questCardNotes} numberOfLines={2}>
+                                  {quest.completion_notes}
+                                </Text>
+                              )}
+
+                              <View style={styles.questCardMeta}>
+                                {quest.quest_categories && (
+                                  <View style={styles.metaBadge}>
+                                    <Text style={styles.metaIcon}>{quest.quest_categories.icon}</Text>
+                                    <Text style={styles.metaLabel}>{quest.quest_categories.name}</Text>
+                                  </View>
+                                )}
+                                {quest.difficulty && (
+                                  <View style={[styles.metaBadge, styles.difficultyBadge]}>
+                                    <Target size={12} color="#B8FF00" />
+                                    <Text style={styles.metaLabel}>{quest.difficulty}</Text>
+                                  </View>
+                                )}
+                                {quest.duration_minutes && (
+                                  <View style={[styles.metaBadge, styles.durationBadge]}>
+                                    <Clock size={12} color="#B8FF00" />
+                                    <Text style={styles.metaLabel}>{quest.duration_minutes}min</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
+            </View>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -518,9 +600,60 @@ const styles = StyleSheet.create({
     backgroundColor: '#333333',
     marginLeft: -1,
   },
+  statsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 30,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#2a2a2a',
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#B8FF00',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#888888',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 20,
+  },
+  dateHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  dateHeaderLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333333',
+  },
+  dateHeader: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#B8FF00',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginHorizontal: 16,
+  },
   timelineItem: {
     position: 'relative',
-    marginBottom: 40,
+    marginBottom: 35,
     width: '100%',
   },
   timelineItemLeft: {
@@ -535,20 +668,35 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: 20,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#B8FF00',
-    marginLeft: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#1a1a1a',
+    marginLeft: -8,
     zIndex: 1,
+    borderWidth: 3,
+    borderColor: '#B8FF00',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineNodeInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#B8FF00',
   },
   questCard: {
     backgroundColor: '#1a1a1a',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     maxWidth: '90%',
-    borderWidth: 1,
-    borderColor: '#333333',
+    borderWidth: 1.5,
+    borderColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   questCardLeft: {
     marginRight: 20,
@@ -556,37 +704,65 @@ const styles = StyleSheet.create({
   questCardRight: {
     marginLeft: 20,
   },
-  questCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  questCardDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#B8FF00',
-  },
   questImageContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    position: 'relative',
   },
   questCardImage: {
     width: '100%',
-    height: 120,
-    borderRadius: 12,
+    height: 160,
+  },
+  questImageGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 100,
   },
   questCardContent: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingVertical: 16,
+    gap: 10,
   },
   questCardTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
-    textAlign: 'center',
+    lineHeight: 24,
+  },
+  questCardNotes: {
+    fontSize: 13,
+    color: '#888888',
+    lineHeight: 18,
+  },
+  questCardMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f0f0f',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 5,
+  },
+  difficultyBadge: {
+    backgroundColor: 'rgba(184, 255, 0, 0.1)',
+  },
+  durationBadge: {
+    backgroundColor: 'rgba(184, 255, 0, 0.1)',
+  },
+  metaIcon: {
+    fontSize: 12,
+  },
+  metaLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#B8FF00',
+    textTransform: 'capitalize',
   },
   loadingText: {
     fontSize: 16,
