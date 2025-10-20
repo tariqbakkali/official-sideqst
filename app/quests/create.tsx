@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#ffffff',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   unitScroll: {
     flex: 1,
