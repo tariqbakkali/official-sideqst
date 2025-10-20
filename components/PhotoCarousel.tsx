@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   photo: {
-    height: 300,
+    height: 160,
   },
   pagination: {
     position: 'absolute',
