@@ -199,6 +199,22 @@ class QuestService {
   }
 
   /**
+   * Remove a quest from user's active quests
+   */
+  async removeUserQuest(questId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('sidequests')
+      .delete()
+      .eq('id', questId)
+      .eq('created_by', user.id);
+
+    if (error) throw error;
+  }
+
+  /**
    * Add a quest to user's active quests (copy to their account)
    */
   async addToMyQuests(questId: string): Promise<Quest> {

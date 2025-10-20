@@ -149,6 +149,29 @@ export default function QuestsScreen() {
     }
   };
 
+  const handleRemoveQuest = async (questId: string) => {
+    Alert.alert(
+      'Remove Quest',
+      'Are you sure you want to remove this quest from your active quests?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await questService.removeUserQuest(questId);
+              setUserQuests(quests => quests.filter(q => q.id !== questId));
+            } catch (error) {
+              console.error('Error removing quest:', error);
+              Alert.alert('Error', 'Failed to remove quest');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleRemoveFromWishlist = async (questId: string) => {
     Alert.alert(
       'Remove from Wishlist',
@@ -324,7 +347,7 @@ export default function QuestsScreen() {
           </TouchableOpacity>
           
           <View style={styles.questActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.completeButton}
               onPress={() => {
                 setSelectedQuestForCompletion(quest);
@@ -334,7 +357,10 @@ export default function QuestsScreen() {
               <CheckCircle size={16} color="#0a0a0a" />
               <Text style={styles.completeButtonText}>Complete</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.removeButton}>
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => handleRemoveQuest(quest.id)}
+            >
               <Text style={styles.removeButtonText}>Remove</Text>
             </TouchableOpacity>
           </View>
