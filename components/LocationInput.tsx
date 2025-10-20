@@ -7,6 +7,7 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { MapPin, Search, X } from 'lucide-react-native';
 import { geocodingService, AddressSuggestion } from '@/services/geocoding';
@@ -137,6 +138,9 @@ export default function LocationInput({
             onChangeText={handleTextChange}
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+            blurOnSubmit={true}
           />
           
           {loading && <ActivityIndicator size="small" color="#B8FF00" />}

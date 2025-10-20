@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -289,6 +291,9 @@ export default function CreateQuestScreen() {
                 value={formData.name}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
                 maxLength={100}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                blurOnSubmit={true}
               />
             </View>
 
@@ -304,6 +309,8 @@ export default function CreateQuestScreen() {
                 numberOfLines={4}
                 textAlignVertical="top"
                 maxLength={500}
+                returnKeyType="done"
+                blurOnSubmit={true}
               />
             </View>
 
@@ -388,6 +395,9 @@ export default function CreateQuestScreen() {
                     setFormData(prev => ({ ...prev, duration_value: value }));
                   }}
                   keyboardType="numeric"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  blurOnSubmit={true}
                 />
               </View>
               
@@ -478,6 +488,9 @@ export default function CreateQuestScreen() {
                   value={step.title}
                   onChangeText={(text) => updateQuestStep(index, 'title', text)}
                   maxLength={100}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  blurOnSubmit={true}
                 />
 
                 <TextInput
@@ -489,6 +502,8 @@ export default function CreateQuestScreen() {
                   multiline
                   numberOfLines={2}
                   maxLength={200}
+                  returnKeyType="done"
+                  blurOnSubmit={true}
                 />
               </View>
             ))}
@@ -514,6 +529,9 @@ export default function CreateQuestScreen() {
                   value={formData.cost}
                   onChangeText={(text) => setFormData(prev => ({ ...prev, cost: text }))}
                   keyboardType="decimal-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  blurOnSubmit={true}
                 />
               </View>
             </View>
