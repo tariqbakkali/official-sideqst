@@ -97,15 +97,21 @@ const QuestCard = ({ quest, style }: { quest: QuestWithCategory; style: any }) =
 
   const handleShare = async () => {
     try {
-      const shareContent = {
-        message: `Check out this quest: ${quest.name}\n\n${quest.description}\n\nFound on SideQuests app!`,
-      };
-      
+      const locationInfo = getLocationDisplay();
+      const difficultyInfo = getDifficultyLabel(quest.difficulty);
+      const durationInfo = getDurationDisplay();
+
+      const shareMessage = `🎯 ${quest.name}\n\n${quest.description}\n\n📍 ${locationInfo}\n⚡ ${difficultyInfo}\n⏱️ ${durationInfo}\n\nDiscover this quest on SideQuests!`;
+
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync('', shareContent);
+        await Sharing.shareAsync('', {
+          message: shareMessage,
+        });
       } else {
-        // Fallback for web or unsupported platforms
-        Alert.alert('Share Quest', shareContent.message);
+        // Fallback for web - copy to clipboard
+        Alert.alert('Quest Details', shareMessage, [
+          { text: 'OK', style: 'default' }
+        ]);
       }
     } catch (error) {
       console.error('Error sharing quest:', error);
