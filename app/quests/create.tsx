@@ -669,10 +669,10 @@ const styles = StyleSheet.create({
     width: 90,
   },
   durationValue: {
-    flex: 1,
     fontSize: 16,
     color: '#ffffff',
     textAlign: 'left',
+    width: 40,
   },
   unitScroll: {
     flex: 1,
