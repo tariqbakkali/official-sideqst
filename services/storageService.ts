@@ -14,31 +14,52 @@ class StorageService {
     folder?: string
   ): Promise<string> {
     try {
+      console.log('[StorageService] Starting upload for:', uri);
+
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('User not authenticated');
+      if (userError || !user) {
+        console.error('[StorageService] Auth error:', userError);
+        throw new Error('User not authenticated');
+      }
+
+      console.log('[StorageService] User authenticated:', user.id);
 
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
       const filePath = folder ? `${folder}/${fileName}` : `${user.id}/${fileName}`;
 
+      console.log('[StorageService] File path:', filePath);
+
       const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+
       const blob = await response.blob();
+      console.log('[StorageService] Blob created, size:', blob.size, 'type:', blob.type);
 
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(filePath, blob, {
-          contentType: 'image/jpeg',
+          contentType: blob.type || 'image/jpeg',
           upsert: false,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[StorageService] Upload error:', error);
+        throw error;
+      }
+
+      console.log('[StorageService] Upload successful:', data);
 
       const { data: publicUrlData } = supabase.storage
         .from(bucket)
         .getPublicUrl(data.path);
 
+      console.log('[StorageService] Public URL:', publicUrlData.publicUrl);
+
       return publicUrlData.publicUrl;
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      console.error('[StorageService] Error uploading photo:', error);
       throw error;
     }
   }

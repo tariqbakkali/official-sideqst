@@ -115,19 +115,23 @@ export default function QuestsScreen() {
       let photoUrl: string | undefined = undefined;
 
       if (completionPhoto) {
+        console.log('[QuestCompletion] Uploading photo:', completionPhoto);
         try {
           photoUrl = await storageService.uploadPhoto(completionPhoto);
+          console.log('[QuestCompletion] Photo uploaded successfully:', photoUrl);
         } catch (uploadError) {
-          console.error('Error uploading photo:', uploadError);
+          console.error('[QuestCompletion] Error uploading photo:', uploadError);
           Alert.alert('Warning', 'Failed to upload photo, but quest will still be completed');
         }
       }
 
+      console.log('[QuestCompletion] Completing quest with photo URL:', photoUrl);
       await questService.completeQuest(
         selectedQuestForCompletion.id,
         completionNotes.trim(),
         photoUrl
       );
+      console.log('[QuestCompletion] Quest completed successfully');
 
       setUserQuests(quests => quests.filter(q => q.id !== selectedQuestForCompletion.id));
 
