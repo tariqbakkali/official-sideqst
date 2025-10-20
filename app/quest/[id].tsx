@@ -11,20 +11,22 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router } from 'expo-router';
-import { questService, Quest } from '@/services/questService';
+import { questService, Quest, QuestStep, QuestStepProgress } from '@/services/questService';
 import { wishlistService } from '@/services/wishlistService';
 import { supabase } from '@/lib/supabase';
-import { 
-  ArrowLeft, 
-  Heart, 
-  Share, 
-  Plus, 
-  MapPin, 
-  Clock, 
-  Target, 
+import {
+  ArrowLeft,
+  Heart,
+  Share,
+  Plus,
+  MapPin,
+  Clock,
+  Target,
   DollarSign,
   User,
-  Calendar
+  Calendar,
+  CheckCircle2,
+  Circle
 } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 
@@ -44,6 +46,9 @@ export default function QuestDetailScreen() {
   const [isAddedToMyQuests, setIsAddedToMyQuests] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [addingToQuests, setAddingToQuests] = useState(false);
+  const [questSteps, setQuestSteps] = useState<QuestStep[]>([]);
+  const [stepProgress, setStepProgress] = useState<QuestStepProgress[]>([]);
+  const [isUserQuest, setIsUserQuest] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -60,6 +65,8 @@ export default function QuestDetailScreen() {
 
   const loadQuest = async () => {
     try {
+      const { data: userData } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .from('sidequests')
         .select(`
@@ -75,6 +82,20 @@ export default function QuestDetailScreen() {
 
       if (error) throw error;
       setQuest(data);
+
+      // Check if this quest belongs to the current user
+      const isOwned = userData.user?.id === data.created_by;
+      setIsUserQuest(isOwned);
+
+      // Load quest steps
+      const steps = await questService.getQuestSteps(id);
+      setQuestSteps(steps);
+
+      // Load step progress if this is the user's quest
+      if (isOwned && steps.length > 0) {
+        const progress = await questService.getUserQuestStepProgress(id);
+        setStepProgress(progress);
+      }
     } catch (error) {
       console.error('Error loading quest:', error);
       Alert.alert('Error', 'Failed to load quest details');
@@ -198,6 +219,46 @@ export default function QuestDetailScreen() {
     return `${quest.duration_value} ${quest.duration_unit}`;
   };
 
+  const handleToggleStep = async (stepOrder: number) => {
+    if (!isUserQuest || !id) return;
+
+    try {
+      const isCompleted = stepProgress.some(
+        p => p.step_order === stepOrder && p.completed_at
+      );
+
+      if (isCompleted) {
+        await questService.uncompleteQuestStep(id, stepOrder);
+        setStepProgress(prev => prev.map(p =>
+          p.step_order === stepOrder ? { ...p, completed_at: undefined } : p
+        ));
+      } else {
+        await questService.completeQuestStep(id, stepOrder);
+        const newProgress = {
+          id: `temp-${stepOrder}`,
+          user_quest_id: id,
+          step_order: stepOrder,
+          completed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        };
+        setStepProgress(prev => {
+          const existingIndex = prev.findIndex(p => p.step_order === stepOrder);
+          if (existingIndex >= 0) {
+            return prev.map((p, i) => i === existingIndex ? newProgress : p);
+          }
+          return [...prev, newProgress];
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling step:', error);
+      Alert.alert('Error', 'Failed to update step progress');
+    }
+  };
+
+  const isStepCompleted = (stepOrder: number) => {
+    return stepProgress.some(p => p.step_order === stepOrder && p.completed_at);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -315,6 +376,41 @@ export default function QuestDetailScreen() {
                   {quest.location_text}
                 </Text>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {questSteps.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Progression Steps</Text>
+              <View style={styles.stepsContainer}>
+                {questSteps.map((step) => {
+                  const completed = isStepCompleted(step.step_order);
+                  return (
+                    <TouchableOpacity
+                      key={step.id}
+                      style={[styles.stepItem, completed && styles.stepItemCompleted]}
+                      onPress={() => isUserQuest && handleToggleStep(step.step_order)}
+                      disabled={!isUserQuest}
+                    >
+                      <View style={styles.stepIconContainer}>
+                        {completed ? (
+                          <CheckCircle2 size={24} color="#B8FF00" fill="#B8FF00" />
+                        ) : (
+                          <Circle size={24} color="#888888" />
+                        )}
+                      </View>
+                      <View style={styles.stepContent}>
+                        <Text style={[styles.stepTitle, completed && styles.stepTitleCompleted]}>
+                          {step.title}
+                        </Text>
+                        {step.description && (
+                          <Text style={styles.stepDescription}>{step.description}</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
 
@@ -535,6 +631,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ffffff',
     fontWeight: '500',
+  },
+  stepsContainer: {
+    gap: 12,
+  },
+  stepItem: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  stepItemCompleted: {
+    borderColor: '#B8FF00',
+    backgroundColor: 'rgba(184, 255, 0, 0.05)',
+  },
+  stepIconContainer: {
+    paddingTop: 2,
+  },
+  stepContent: {
+    flex: 1,
+    gap: 4,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  stepTitleCompleted: {
+    color: '#B8FF00',
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: '#888888',
   },
   actionBar: {
     flexDirection: 'row',

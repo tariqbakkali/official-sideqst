@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { questService, CreateQuestData } from '@/services/questService';
 import LocationInput from '@/components/LocationInput';
-import { ArrowLeft, Star, Clock, DollarSign, Camera } from 'lucide-react-native';
+import { ArrowLeft, Star, Clock, DollarSign, Camera, Plus, X } from 'lucide-react-native';
 
 interface QuestCategory {
   id: string;
@@ -78,6 +78,8 @@ export default function CreateQuestScreen() {
     is_public: true,
   });
 
+  const [questSteps, setQuestSteps] = useState<Array<{ title: string; description: string }>>([]);
+
   useEffect(() => {
     loadCategories();
   }, []);
@@ -111,6 +113,20 @@ export default function CreateQuestScreen() {
     }));
   };
 
+  const addQuestStep = () => {
+    setQuestSteps(prev => [...prev, { title: '', description: '' }]);
+  };
+
+  const removeQuestStep = (index: number) => {
+    setQuestSteps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateQuestStep = (index: number, field: 'title' | 'description', value: string) => {
+    setQuestSteps(prev => prev.map((step, i) =>
+      i === index ? { ...step, [field]: value } : step
+    ));
+  };
+
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
       Alert.alert('Error', 'Quest name is required');
@@ -135,6 +151,15 @@ export default function CreateQuestScreen() {
     if (formData.duration_value <= 0) {
       Alert.alert('Error', 'Duration must be greater than 0');
       return false;
+    }
+    // Validate quest steps if any exist
+    if (questSteps.length > 0) {
+      for (let i = 0; i < questSteps.length; i++) {
+        if (!questSteps[i].title.trim()) {
+          Alert.alert('Error', `Step ${i + 1} requires a title`);
+          return false;
+        }
+      }
     }
     return true;
   };
@@ -165,9 +190,14 @@ export default function CreateQuestScreen() {
       };
 
       console.log('Processed quest data:', questData);
-      
-      await questService.createQuest(questData);
-      
+
+      const createdQuest = await questService.createQuest(questData);
+
+      // Add quest steps if any were defined
+      if (questSteps.length > 0) {
+        await questService.addQuestSteps(createdQuest.id, questSteps);
+      }
+
       // Navigate immediately after successful creation
       router.push('/(tabs)/quests');
       
@@ -382,6 +412,54 @@ export default function CreateQuestScreen() {
               locationText={formData.location_text}
               onLocationChange={handleLocationChange}
             />
+          </View>
+
+          {/* Quest Steps */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Progression Steps</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Optional milestones to track progress (e.g., 10 sec, 30 sec, 1 min)
+                </Text>
+              </View>
+            </View>
+
+            {questSteps.map((step, index) => (
+              <View key={index} style={styles.stepCard}>
+                <View style={styles.stepHeader}>
+                  <Text style={styles.stepNumber}>Step {index + 1}</Text>
+                  <TouchableOpacity onPress={() => removeQuestStep(index)}>
+                    <X size={20} color="#ff4757" />
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Step title (e.g., Hold for 10 seconds)"
+                  placeholderTextColor="#888888"
+                  value={step.title}
+                  onChangeText={(text) => updateQuestStep(index, 'title', text)}
+                  maxLength={100}
+                />
+
+                <TextInput
+                  style={[styles.input, styles.stepDescriptionInput]}
+                  placeholder="Optional description..."
+                  placeholderTextColor="#888888"
+                  value={step.description}
+                  onChangeText={(text) => updateQuestStep(index, 'description', text)}
+                  multiline
+                  numberOfLines={2}
+                  maxLength={200}
+                />
+              </View>
+            ))}
+
+            <TouchableOpacity style={styles.addStepButton} onPress={addQuestStep}>
+              <Plus size={20} color="#B8FF00" />
+              <Text style={styles.addStepText}>Add Step</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Optional Details */}
@@ -703,5 +781,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888888',
     marginTop: 2,
+  },
+  sectionHeader: {
+    marginBottom: 16,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 4,
+  },
+  stepCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+    gap: 12,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#B8FF00',
+  },
+  stepDescriptionInput: {
+    height: 60,
+    textAlignVertical: 'top',
+  },
+  addStepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#B8FF00',
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  addStepText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#B8FF00',
   },
 });

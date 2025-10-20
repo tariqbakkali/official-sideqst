@@ -41,6 +41,23 @@ export interface CreateQuestData {
   is_public?: boolean;
 }
 
+export interface QuestStep {
+  id: string;
+  quest_id: string;
+  step_order: number;
+  title: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface QuestStepProgress {
+  id: string;
+  user_quest_id: string;
+  step_order: number;
+  completed_at?: string;
+  created_at: string;
+}
+
 export interface NearbyQuestsParams {
   latitude: number;
   longitude: number;
@@ -302,6 +319,85 @@ class QuestService {
 
     if (error) throw error;
     return data || [];
+  }
+
+  /**
+   * Add steps to a quest
+   */
+  async addQuestSteps(
+    questId: string,
+    steps: Array<{ title: string; description: string }>
+  ): Promise<void> {
+    const stepsToInsert = steps.map((step, index) => ({
+      quest_id: questId,
+      step_order: index + 1,
+      title: step.title,
+      description: step.description || null,
+    }));
+
+    const { error } = await supabase
+      .from('quest_steps')
+      .insert(stepsToInsert);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Get steps for a quest
+   */
+  async getQuestSteps(questId: string): Promise<QuestStep[]> {
+    const { data, error } = await supabase
+      .from('quest_steps')
+      .select('*')
+      .eq('quest_id', questId)
+      .order('step_order');
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Get user's progress on quest steps
+   */
+  async getUserQuestStepProgress(userQuestId: string): Promise<QuestStepProgress[]> {
+    const { data, error } = await supabase
+      .from('user_quest_step_progress')
+      .select('*')
+      .eq('user_quest_id', userQuestId)
+      .order('step_order');
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Mark a quest step as completed
+   */
+  async completeQuestStep(userQuestId: string, stepOrder: number): Promise<void> {
+    const { error } = await supabase
+      .from('user_quest_step_progress')
+      .upsert({
+        user_quest_id: userQuestId,
+        step_order: stepOrder,
+        completed_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_quest_id,step_order'
+      });
+
+    if (error) throw error;
+  }
+
+  /**
+   * Unmark a quest step (set to incomplete)
+   */
+  async uncompleteQuestStep(userQuestId: string, stepOrder: number): Promise<void> {
+    const { error } = await supabase
+      .from('user_quest_step_progress')
+      .update({ completed_at: null })
+      .eq('user_quest_id', userQuestId)
+      .eq('step_order', stepOrder);
+
+    if (error) throw error;
   }
 }
 
