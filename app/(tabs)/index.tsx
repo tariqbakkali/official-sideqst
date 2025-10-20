@@ -456,9 +456,6 @@ export default function FeedScreen() {
               <Text style={styles.subtitle}>Ready for Adventure</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Text style={styles.notificationText}>🔔</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -553,17 +550,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888888',
     marginTop: 2,
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationText: {
-    fontSize: 18,
   },
   content: {
     flex: 1,
