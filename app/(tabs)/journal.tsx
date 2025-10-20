@@ -539,10 +539,12 @@ const styles = StyleSheet.create({
   questIndicator: {
     position: 'absolute',
     bottom: 4,
+    left: '50%',
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: '#B8FF00',
+    marginLeft: -2,
   },
   selectedDateQuests: {
     marginTop: 20,
@@ -693,6 +695,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#1a1a1a',
     marginLeft: -8,
+    transform: [{ translateX: 0 }],
     zIndex: 1,
     borderWidth: 3,
     borderColor: '#B8FF00',
