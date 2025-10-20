@@ -109,6 +109,9 @@ const QuestCard = ({ quest, style }: { quest: QuestWithCategory; style: any }) =
   };
 
   const getLocationDisplay = () => {
+    if (quest.distance_miles !== undefined && quest.distance_miles !== null) {
+      return `${quest.distance_miles.toFixed(1)} mi away`;
+    }
     switch (quest.location_type) {
       case 'anywhere':
         return 'Anywhere';
@@ -218,7 +221,13 @@ const QuestCard = ({ quest, style }: { quest: QuestWithCategory; style: any }) =
 };
 
 export default function FilterResultsScreen() {
-  const { type, value } = useLocalSearchParams<{ type: string; value: string }>();
+  const { type, value, lat, lng, radius } = useLocalSearchParams<{
+    type: string;
+    value: string;
+    lat?: string;
+    lng?: string;
+    radius?: string;
+  }>();
   const [quests, setQuests] = useState<QuestWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -232,6 +241,9 @@ export default function FilterResultsScreen() {
   const getFilterTitle = () => {
     switch (type) {
       case 'location':
+        if (value === 'address' && radius) {
+          return `Local/IRL (${radius} mi)`;
+        }
         return value === 'anywhere' ? 'Anywhere' : value === 'online' ? 'Online' : 'Local/IRL';
       case 'difficulty':
         const levels = ['', 'Super Easy', 'Easy', 'Medium', 'Hard', 'Very Hard'];
@@ -248,38 +260,52 @@ export default function FilterResultsScreen() {
 
   const loadFilteredQuests = async () => {
     try {
-      // Get all public quests
-      const { data: allQuests, error } = await supabase
-        .from('sidequests')
-        .select(`
-          *,
-          quest_categories (
-            name,
-            icon,
-            color
-          )
-        `)
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
+      let filteredQuests: any[] = [];
 
-      if (error) throw error;
+      // Handle location-based search with radius
+      if (type === 'location' && value === 'address' && lat && lng && radius) {
+        const { data: nearbyQuests, error } = await supabase.rpc('find_nearby_quests', {
+          user_lat: parseFloat(lat),
+          user_lng: parseFloat(lng),
+          radius_miles: parseFloat(radius)
+        });
 
-      // Filter quests based on the filter type and value
-      let filteredQuests = allQuests || [];
+        if (error) throw error;
+        filteredQuests = nearbyQuests || [];
+      } else {
+        // Get all public quests for other filters
+        const { data: allQuests, error } = await supabase
+          .from('sidequests')
+          .select(`
+            *,
+            quest_categories (
+              name,
+              icon,
+              color
+            )
+          `)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
 
-      switch (type) {
-        case 'location':
-          filteredQuests = filteredQuests.filter(quest => quest.location_type === value);
-          break;
-        case 'difficulty':
-          filteredQuests = filteredQuests.filter(quest => quest.difficulty === parseInt(value));
-          break;
-        case 'duration':
-          filteredQuests = filterByDuration(filteredQuests, value);
-          break;
-        case 'uniqueness':
-          filteredQuests = filteredQuests.filter(quest => quest.uniqueness === parseInt(value));
-          break;
+        if (error) throw error;
+
+        // Filter quests based on the filter type and value
+        filteredQuests = allQuests || [];
+
+        switch (type) {
+          case 'location':
+            filteredQuests = filteredQuests.filter(quest => quest.location_type === value);
+            break;
+          case 'difficulty':
+            filteredQuests = filteredQuests.filter(quest => quest.difficulty === parseInt(value));
+            break;
+          case 'duration':
+            filteredQuests = filterByDuration(filteredQuests, value);
+            break;
+          case 'uniqueness':
+            filteredQuests = filteredQuests.filter(quest => quest.uniqueness === parseInt(value));
+            break;
+        }
       }
 
       // Filter out quests that are already in user's active quests or completed

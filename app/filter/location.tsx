@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Globe, MapPin, Wifi } from 'lucide-react-native';
+import { ArrowLeft, Globe, MapPin, Wifi, Navigation } from 'lucide-react-native';
+import * as Location from 'expo-location';
 
 const locationOptions = [
   { 
@@ -38,8 +41,44 @@ const locationOptions = [
 ];
 
 export default function LocationFilterScreen() {
+  const [selectedRadius, setSelectedRadius] = useState(5);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  const radiusOptions = [1, 5, 10, 25, 50, 100];
+
   const handleLocationSelect = (filter: string) => {
-    router.push(`/filter/results?type=location&value=${filter}`);
+    if (filter === 'address') {
+      handleLocalSearch();
+    } else {
+      router.push(`/filter/results?type=location&value=${filter}`);
+    }
+  };
+
+  const handleLocalSearch = async () => {
+    setLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Permission Required',
+          'Please enable location permissions to search for nearby quests.',
+          [{ text: 'OK' }]
+        );
+        setLoadingLocation(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      router.push(`/filter/results?type=location&value=address&lat=${location.coords.latitude}&lng=${location.coords.longitude}&radius=${selectedRadius}`);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get your location. Please try again.');
+    } finally {
+      setLoadingLocation(false);
+    }
   };
 
   return (
@@ -54,23 +93,57 @@ export default function LocationFilterScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.subtitle}>Where do you want to do your quest?</Text>
-        
+
         <View style={styles.optionsContainer}>
           {locationOptions.map((option) => (
-            <TouchableOpacity 
-              key={option.id} 
-              style={styles.optionCard}
-              onPress={() => handleLocationSelect(option.filter)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
-                <option.icon size={28} color="#ffffff" />
-              </View>
-              <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
-              </View>
-            </TouchableOpacity>
+            <View key={option.id}>
+              <TouchableOpacity
+                style={styles.optionCard}
+                onPress={() => handleLocationSelect(option.filter)}
+                activeOpacity={0.8}
+                disabled={loadingLocation && option.filter === 'address'}
+              >
+                <View style={[styles.optionIcon, { backgroundColor: option.color }]}>
+                  {loadingLocation && option.filter === 'address' ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <option.icon size={28} color="#ffffff" />
+                  )}
+                </View>
+                <View style={styles.optionContent}>
+                  <Text style={styles.optionTitle}>{option.title}</Text>
+                  <Text style={styles.optionDescription}>{option.description}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {option.filter === 'address' && (
+                <View style={styles.radiusSelector}>
+                  <View style={styles.radiusHeader}>
+                    <Navigation size={16} color="#B8FF00" />
+                    <Text style={styles.radiusLabel}>Search Radius</Text>
+                  </View>
+                  <View style={styles.radiusOptions}>
+                    {radiusOptions.map((radius) => (
+                      <TouchableOpacity
+                        key={radius}
+                        style={[
+                          styles.radiusButton,
+                          selectedRadius === radius && styles.radiusButtonActive
+                        ]}
+                        onPress={() => setSelectedRadius(radius)}
+                      >
+                        <Text style={[
+                          styles.radiusButtonText,
+                          selectedRadius === radius && styles.radiusButtonTextActive
+                        ]}>
+                          {radius} mi
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
           ))}
         </View>
       </ScrollView>
@@ -151,5 +224,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888888',
     lineHeight: 18,
+  },
+  radiusSelector: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    padding: 16,
+    backgroundColor: '#0f0f0f',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  radiusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  radiusLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  radiusOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  radiusButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  radiusButtonActive: {
+    backgroundColor: '#B8FF00',
+    borderColor: '#B8FF00',
+  },
+  radiusButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888888',
+  },
+  radiusButtonTextActive: {
+    color: '#0a0a0a',
   },
 });
