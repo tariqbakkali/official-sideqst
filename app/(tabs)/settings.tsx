@@ -41,12 +41,10 @@ export default function SettingsScreen() {
     darkMode: true,
   });
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [questStats, setQuestStats] = useState({ completed: 0, created: 0 });
 
   useEffect(() => {
     if (user) {
       loadUserProfile();
-      loadQuestStats();
     }
   }, [user]);
 
@@ -68,28 +66,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const loadQuestStats = async () => {
-    try {
-      const [completedRes, createdRes] = await Promise.all([
-        supabase
-          .from('user_quest_progress')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user?.id)
-          .eq('status', 'completed'),
-        supabase
-          .from('quests')
-          .select('id', { count: 'exact', head: true })
-          .eq('created_by', user?.id)
-      ]);
-
-      setQuestStats({
-        completed: completedRes.count || 0,
-        created: createdRes.count || 0,
-      });
-    } catch (error) {
-      console.error('Error loading quest stats:', error);
-    }
-  };
 
   const handleToggle = async (key: string) => {
     const newValue = !toggleValues[key as keyof typeof toggleValues];
@@ -232,32 +208,11 @@ export default function SettingsScreen() {
               {userProfile?.display_name || user?.user_metadata?.full_name || 'User'}
             </Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
-            <View style={styles.badgeContainer}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {questStats.completed >= 50 ? 'Quest Legend' :
-                   questStats.completed >= 20 ? 'Quest Master' :
-                   questStats.completed >= 5 ? 'Adventurer' : 'Novice'}
-                </Text>
-              </View>
-            </View>
           </View>
         </View>
         <TouchableOpacity style={styles.editProfileButton} onPress={handleEditProfile}>
           <Text style={styles.editProfileText}>Edit</Text>
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.statsSection}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{questStats.completed}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{questStats.created}</Text>
-          <Text style={styles.statLabel}>Created</Text>
-        </View>
       </View>
     </View>
 
@@ -345,32 +300,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-  statsSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#333333',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#B8FF00',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#333333',
-    marginHorizontal: 16,
-  },
   profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -407,21 +336,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888888',
     marginTop: 2,
-  },
-  badgeContainer: {
-    marginTop: 6,
-  },
-  badge: {
-    backgroundColor: '#B8FF00',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#0a0a0a',
   },
   editProfileButton: {
     backgroundColor: '#333333',
