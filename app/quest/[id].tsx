@@ -289,14 +289,14 @@ export default function QuestDetailScreen() {
     );
   }
 
-  const imageUrl = quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
+  const imageUrl = quest.completion_photo_url || quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
-          <ImageBackground 
-            source={{ uri: imageUrl }} 
+          <ImageBackground
+            source={{ uri: imageUrl }}
             style={styles.heroImage}
             imageStyle={styles.heroImageStyle}
           >
@@ -309,7 +309,7 @@ export default function QuestDetailScreen() {
                   <ArrowLeft size={24} color="#ffffff" />
                 </TouchableOpacity>
               </View>
-              
+
               <View style={styles.heroContent}>
                 <View style={styles.categoryBadge}>
                   <Text style={styles.categoryIcon}>{quest.quest_categories?.icon || '⚡'}</Text>
@@ -326,6 +326,34 @@ export default function QuestDetailScreen() {
         </View>
 
         <View style={styles.content}>
+          {quest.is_completed && quest.completed_at && (
+            <View style={styles.section}>
+              <View style={styles.completionHeader}>
+                <CheckCircle2 size={24} color="#B8FF00" fill="#B8FF00" />
+                <Text style={styles.completionTitle}>Quest Completed!</Text>
+              </View>
+              <View style={styles.completionCard}>
+                <View style={styles.completionMeta}>
+                  <Calendar size={16} color="#B8FF00" />
+                  <Text style={styles.completionDate}>
+                    {new Date(quest.completed_at).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </Text>
+                </View>
+                {quest.completion_notes && (
+                  <>
+                    <Text style={styles.completionNotesLabel}>My Experience</Text>
+                    <Text style={styles.completionNotes}>{quest.completion_notes}</Text>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.description}>{quest.description}</Text>
@@ -729,5 +757,46 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ff4757',
     fontWeight: 'bold',
+  },
+  completionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  completionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#B8FF00',
+  },
+  completionCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#B8FF00',
+    gap: 16,
+  },
+  completionMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  completionDate: {
+    fontSize: 16,
+    color: '#B8FF00',
+    fontWeight: '600',
+  },
+  completionNotesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888888',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  completionNotes: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
   },
 });
