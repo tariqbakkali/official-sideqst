@@ -631,9 +631,19 @@ export default function QuestsScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => setSearchVisible(!searchVisible)}
+            onPress={() => {
+              setSearchVisible(!searchVisible);
+              if (searchVisible) {
+                setSearchQuery('');
+                setSearchResults([]);
+              }
+            }}
           >
-            <Search size={20} color="#ffffff" />
+            {searchVisible ? (
+              <X size={20} color="#ffffff" />
+            ) : (
+              <Search size={20} color="#ffffff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
