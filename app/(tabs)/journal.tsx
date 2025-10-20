@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Calendar, Camera, MapPin, Clock, Target, Grid3x3 as Grid3X3 } from 'lucide-react-native';
+import { Calendar, MapPin, Clock, Target, Grid3x3 as Grid3X3 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { questService, Quest } from '@/services/questService';
 
@@ -237,8 +237,8 @@ export default function JournalScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Quest Journal</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={[styles.headerButton, viewMode === 'calendar' && styles.headerButtonActive]} 
+          <TouchableOpacity
+            style={[styles.headerButton, viewMode === 'calendar' && styles.headerButtonActive]}
             onPress={() => setViewMode(viewMode === 'timeline' ? 'calendar' : 'timeline')}
           >
             {viewMode === 'timeline' ? (
@@ -246,9 +246,6 @@ export default function JournalScreen() {
             ) : (
               <Grid3X3 size={20} color="#ffffff" />
             )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Camera size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>
