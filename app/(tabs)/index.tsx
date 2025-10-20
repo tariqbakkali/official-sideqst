@@ -411,11 +411,15 @@ export default function FeedScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.userInfo}>
-            <View style={styles.avatar}>
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => router.push('/profile/edit')}
+              activeOpacity={0.7}
+            >
               <Text style={styles.avatarText}>
                 {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || '👤'}
               </Text>
-            </View>
+            </TouchableOpacity>
             <View>
               <Text style={styles.greeting}>
                 Hi {user?.user_metadata?.full_name?.split(' ')[0] || 'Adventurer'}
