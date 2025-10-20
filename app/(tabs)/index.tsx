@@ -158,10 +158,6 @@ const QuestCard = ({ quest, style }: { quest: QuestWithCategory; style: any }) =
           style={styles.gradient}
         >
           <View style={styles.questInfo}>
-            <View style={styles.userRow}>
-              <Text style={styles.userAvatar}>👤</Text>
-              <Text style={styles.userName}>Quest Creator</Text>
-            </View>
             <Text style={styles.questTitle} numberOfLines={2}>{quest.name}</Text>
             <Text style={styles.questDescription} numberOfLines={2}>{quest.description}</Text>
             
@@ -565,20 +561,6 @@ const styles = StyleSheet.create({
   },
   questInfo: {
     gap: 6,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  userAvatar: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  userName: {
-    fontSize: 12,
-    color: '#ffffff',
-    fontWeight: '600',
   },
   questTitle: {
     fontSize: 16,
