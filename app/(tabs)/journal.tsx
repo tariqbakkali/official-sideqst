@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Calendar, MapPin, Clock, Target, Grid3x3 as Grid3X3 } from 'lucide-react-native';
+import { Calendar, Grid3x3 as Grid3X3 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { questService, Quest } from '@/services/questService';
 
@@ -356,26 +356,11 @@ export default function JournalScreen() {
                                 </Text>
                               )}
 
-                              <View style={styles.questCardMeta}>
-                                {quest.quest_categories && (
-                                  <View style={styles.metaBadge}>
-                                    <Text style={styles.metaIcon}>{quest.quest_categories.icon}</Text>
-                                    <Text style={styles.metaLabel}>{quest.quest_categories.name}</Text>
-                                  </View>
-                                )}
-                                {quest.difficulty && (
-                                  <View style={[styles.metaBadge, styles.difficultyBadge]}>
-                                    <Target size={12} color="#B8FF00" />
-                                    <Text style={styles.metaLabel}>{quest.difficulty}</Text>
-                                  </View>
-                                )}
-                                {quest.duration_minutes && (
-                                  <View style={[styles.metaBadge, styles.durationBadge]}>
-                                    <Clock size={12} color="#B8FF00" />
-                                    <Text style={styles.metaLabel}>{quest.duration_minutes}min</Text>
-                                  </View>
-                                )}
-                              </View>
+                              {quest.quest_categories && (
+                                <View style={styles.questCardMeta}>
+                                  <Text style={styles.categoryIcon}>{quest.quest_categories.icon}</Text>
+                                </View>
+                              )}
                             </View>
                           </TouchableOpacity>
                         </View>
@@ -728,41 +713,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     lineHeight: 24,
+    textAlign: 'center',
   },
   questCardNotes: {
     fontSize: 13,
     color: '#888888',
     lineHeight: 18,
+    textAlign: 'center',
   },
   questCardMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  metaBadge: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 5,
+    justifyContent: 'center',
+    marginTop: 8,
   },
-  difficultyBadge: {
-    backgroundColor: 'rgba(184, 255, 0, 0.1)',
-  },
-  durationBadge: {
-    backgroundColor: 'rgba(184, 255, 0, 0.1)',
-  },
-  metaIcon: {
-    fontSize: 12,
-  },
-  metaLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#B8FF00',
-    textTransform: 'capitalize',
+  categoryIcon: {
+    fontSize: 32,
+    textAlign: 'center',
   },
   loadingText: {
     fontSize: 16,
