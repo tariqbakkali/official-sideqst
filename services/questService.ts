@@ -21,6 +21,7 @@ export interface Quest {
   completed_at?: string;
   completion_notes?: string;
   completion_photo_url?: string;
+  completion_photos?: string[];
   created_at?: string;
 }
 
@@ -288,12 +289,12 @@ class QuestService {
   }
 
   /**
-   * Complete a quest with notes and optional photo
+   * Complete a quest with notes and optional photos (up to 5)
    */
   async completeQuest(
-    questId: string, 
-    completionNotes: string, 
-    completionPhotoUrl?: string
+    questId: string,
+    completionNotes: string,
+    completionPhotos?: string[]
   ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -304,7 +305,7 @@ class QuestService {
         is_completed: true,
         completed_at: new Date().toISOString(),
         completion_notes: completionNotes,
-        completion_photo_url: completionPhotoUrl,
+        completion_photos: completionPhotos || [],
       })
       .eq('id', questId)
       .eq('created_by', user.id);

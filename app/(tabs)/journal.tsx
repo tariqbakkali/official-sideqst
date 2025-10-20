@@ -14,11 +14,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Calendar, Grid3x3 as Grid3X3 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { questService, Quest } from '@/services/questService';
+import { PhotoCarousel, FullscreenPhotoViewer } from '@/components/PhotoCarousel';
 
 interface CompletedQuest extends Quest {
   completed_at: string;
   completion_notes?: string;
   completion_photo_url?: string;
+  completion_photos?: string[];
   quest_categories?: {
     name: string;
     icon: string;
@@ -33,6 +35,15 @@ export default function JournalScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [fullscreenPhotos, setFullscreenPhotos] = useState<string[]>([]);
+  const [fullscreenInitialIndex, setFullscreenInitialIndex] = useState(0);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+
+  const handlePhotoPress = (photos: string[], index: number) => {
+    setFullscreenPhotos(photos);
+    setFullscreenInitialIndex(index);
+    setFullscreenVisible(true);
+  };
 
   useEffect(() => {
     loadJournalData();
@@ -223,17 +234,23 @@ export default function JournalScreen() {
             </Text>
             <View style={styles.selectedDateQuestsList}>
               {getQuestsForDate(new Date(selectedDate)).map(quest => {
-                const imageUrl = quest.completion_photo_url || quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
-                
+                const photos = quest.completion_photos && quest.completion_photos.length > 0
+                  ? quest.completion_photos
+                  : quest.completion_photo_url
+                  ? [quest.completion_photo_url]
+                  : quest.photo_url
+                  ? [quest.photo_url]
+                  : ['https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'];
+
                 return (
-                  <TouchableOpacity 
-                    key={quest.id} 
+                  <TouchableOpacity
+                    key={quest.id}
                     style={styles.selectedDateQuest}
                     onPress={() => router.push(`/quest/${quest.id}`)}
                     activeOpacity={0.8}
                   >
                     <View style={styles.questThumbnailContainer}>
-                      <Image source={{ uri: imageUrl }} style={styles.questThumbnail} />
+                      <Image source={{ uri: photos[0] }} style={styles.questThumbnail} />
                       <View style={styles.questThumbnailOverlay}>
                         <Text style={styles.questCategoryIcon}>
                           {quest.quest_categories?.icon || '⚡'}
@@ -329,25 +346,36 @@ export default function JournalScreen() {
                           <View style={styles.timelineNode}>
                             <View style={styles.timelineNodeInner} />
                           </View>
-                          <TouchableOpacity
+                          <View
                             style={[styles.questCard, isLeft ? styles.questCardLeft : styles.questCardRight]}
-                            onPress={() => router.push(`/quest/${quest.id}`)}
-                            activeOpacity={0.9}
                           >
-                            {quest.completion_photo_url && (
+                            {(quest.completion_photos && quest.completion_photos.length > 0) || quest.completion_photo_url ? (
                               <View style={styles.questImageContainer}>
-                                <Image
-                                  source={{ uri: quest.completion_photo_url }}
-                                  style={styles.questCardImage}
-                                />
-                                <LinearGradient
-                                  colors={['transparent', 'rgba(0,0,0,0.6)']}
-                                  style={styles.questImageGradient}
+                                <PhotoCarousel
+                                  photos={
+                                    quest.completion_photos && quest.completion_photos.length > 0
+                                      ? quest.completion_photos
+                                      : quest.completion_photo_url
+                                      ? [quest.completion_photo_url]
+                                      : []
+                                  }
+                                  onPhotoPress={(index) => {
+                                    const photos = quest.completion_photos && quest.completion_photos.length > 0
+                                      ? quest.completion_photos
+                                      : quest.completion_photo_url
+                                      ? [quest.completion_photo_url]
+                                      : [];
+                                    handlePhotoPress(photos, index);
+                                  }}
                                 />
                               </View>
-                            )}
+                            ) : null}
 
-                            <View style={styles.questCardContent}>
+                            <TouchableOpacity
+                              style={styles.questCardContent}
+                              onPress={() => router.push(`/quest/${quest.id}`)}
+                              activeOpacity={0.9}
+                            >
                               <Text style={styles.questCardTitle}>{quest.name}</Text>
 
                               {quest.completion_notes && (
@@ -361,8 +389,8 @@ export default function JournalScreen() {
                                   <Text style={styles.categoryIcon}>{quest.quest_categories.icon}</Text>
                                 </View>
                               )}
-                            </View>
-                          </TouchableOpacity>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       );
                     })}
@@ -373,6 +401,13 @@ export default function JournalScreen() {
           </>
         )}
       </ScrollView>
+
+      <FullscreenPhotoViewer
+        photos={fullscreenPhotos}
+        initialIndex={fullscreenInitialIndex}
+        visible={fullscreenVisible}
+        onClose={() => setFullscreenVisible(false)}
+      />
     </SafeAreaView>
   );
 }

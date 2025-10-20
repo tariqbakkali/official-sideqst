@@ -65,6 +65,22 @@ class StorageService {
   }
 
   /**
+   * Upload multiple photos to Supabase Storage
+   * @param uris - Array of local file URIs from ImagePicker
+   * @param bucket - Storage bucket name
+   * @param folder - Folder path within the bucket
+   * @returns Array of public URLs of the uploaded files
+   */
+  async uploadMultiplePhotos(
+    uris: string[],
+    bucket: string = 'quest-photos',
+    folder?: string
+  ): Promise<string[]> {
+    const uploadPromises = uris.map(uri => this.uploadPhoto(uri, bucket, folder));
+    return Promise.all(uploadPromises);
+  }
+
+  /**
    * Delete a photo from Supabase Storage
    * @param url - Public URL of the file to delete
    * @param bucket - Storage bucket name
@@ -83,6 +99,16 @@ class StorageService {
       console.error('Error deleting photo:', error);
       throw error;
     }
+  }
+
+  /**
+   * Delete multiple photos from Supabase Storage
+   * @param urls - Array of public URLs of the files to delete
+   * @param bucket - Storage bucket name
+   */
+  async deleteMultiplePhotos(urls: string[], bucket: string = 'quest-photos'): Promise<void> {
+    const deletePromises = urls.map(url => this.deletePhoto(url, bucket));
+    await Promise.all(deletePromises);
   }
 }
 

@@ -55,7 +55,7 @@ export default function QuestsScreen() {
   const [completionModalVisible, setCompletionModalVisible] = useState(false);
   const [selectedQuestForCompletion, setSelectedQuestForCompletion] = useState<QuestWithCategory | null>(null);
   const [completionNotes, setCompletionNotes] = useState('');
-  const [completionPhoto, setCompletionPhoto] = useState<string | null>(null);
+  const [completionPhotos, setCompletionPhotos] = useState<string[]>([]);
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [startingQuests, setStartingQuests] = useState<Set<string>>(new Set());
 
@@ -112,24 +112,24 @@ export default function QuestsScreen() {
 
     setSubmittingCompletion(true);
     try {
-      let photoUrl: string | undefined = undefined;
+      let photoUrls: string[] = [];
 
-      if (completionPhoto) {
-        console.log('[QuestCompletion] Uploading photo:', completionPhoto);
+      if (completionPhotos.length > 0) {
+        console.log('[QuestCompletion] Uploading photos:', completionPhotos);
         try {
-          photoUrl = await storageService.uploadPhoto(completionPhoto);
-          console.log('[QuestCompletion] Photo uploaded successfully:', photoUrl);
+          photoUrls = await storageService.uploadMultiplePhotos(completionPhotos);
+          console.log('[QuestCompletion] Photos uploaded successfully:', photoUrls);
         } catch (uploadError) {
-          console.error('[QuestCompletion] Error uploading photo:', uploadError);
-          Alert.alert('Warning', 'Failed to upload photo, but quest will still be completed');
+          console.error('[QuestCompletion] Error uploading photos:', uploadError);
+          Alert.alert('Warning', 'Failed to upload some photos, but quest will still be completed');
         }
       }
 
-      console.log('[QuestCompletion] Completing quest with photo URL:', photoUrl);
+      console.log('[QuestCompletion] Completing quest with photo URLs:', photoUrls);
       await questService.completeQuest(
         selectedQuestForCompletion.id,
         completionNotes.trim(),
-        photoUrl
+        photoUrls
       );
       console.log('[QuestCompletion] Quest completed successfully');
 
@@ -138,7 +138,7 @@ export default function QuestsScreen() {
       setCompletionModalVisible(false);
       setSelectedQuestForCompletion(null);
       setCompletionNotes('');
-      setCompletionPhoto(null);
+      setCompletionPhotos([]);
 
       Alert.alert('🎉 Quest Completed!', 'Your quest has been moved to your journal');
     } catch (error) {
@@ -233,8 +233,8 @@ export default function QuestsScreen() {
   };
 
   const addCompletionPhoto = async () => {
-    if (completionPhoto) {
-      Alert.alert('Photo Limit', 'You can only add one photo per quest');
+    if (completionPhotos.length >= 5) {
+      Alert.alert('Photo Limit', 'You can add up to 5 photos per quest');
       return;
     }
 
@@ -253,12 +253,16 @@ export default function QuestsScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setCompletionPhoto(result.assets[0].uri);
+        setCompletionPhotos(prev => [...prev, result.assets[0].uri]);
       }
     } catch (error) {
       console.error('Error picking photo:', error);
       Alert.alert('Error', 'Failed to pick photo');
     }
+  };
+
+  const removeCompletionPhoto = (index: number) => {
+    setCompletionPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const getLocationDisplay = (quest: Quest) => {
@@ -608,7 +612,7 @@ export default function QuestsScreen() {
                   setCompletionModalVisible(false);
                   setSelectedQuestForCompletion(null);
                   setCompletionNotes('');
-                  setCompletionPhoto(null);
+                  setCompletionPhotos([]);
                 }}
               >
                 <X size={20} color="#ffffff" />
@@ -649,21 +653,37 @@ export default function QuestsScreen() {
               </View>
 
               <View style={styles.completionSection}>
-                <Text style={styles.sectionLabel}>Add a Photo (Optional)</Text>
-                {completionPhoto ? (
-                  <View style={styles.photoContainer}>
-                    <Image source={{ uri: completionPhoto }} style={styles.completionPhotoPreview} />
-                    <TouchableOpacity 
-                      style={styles.removePhotoButton}
-                      onPress={() => setCompletionPhoto(null)}
-                    >
-                      <X size={16} color="#ffffff" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
+                <Text style={styles.sectionLabel}>Add Photos (Optional, up to 5)</Text>
+                {completionPhotos.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.photosScroll}
+                  >
+                    {completionPhotos.map((photo, index) => (
+                      <View key={index} style={styles.photoContainer}>
+                        <Image source={{ uri: photo }} style={styles.completionPhotoPreview} />
+                        <TouchableOpacity
+                          style={styles.removePhotoButton}
+                          onPress={() => removeCompletionPhoto(index)}
+                        >
+                          <X size={16} color="#ffffff" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+                {completionPhotos.length < 5 && (
                   <TouchableOpacity style={styles.addPhotoButton} onPress={addCompletionPhoto}>
                     <Camera size={32} color="#B8FF00" />
-                    <Text style={styles.addPhotoText}>Add Photo</Text>
+                    <Text style={styles.addPhotoText}>
+                      {completionPhotos.length > 0 ? 'Add Another Photo' : 'Add Photo'}
+                    </Text>
+                    {completionPhotos.length > 0 && (
+                      <Text style={styles.photoCountText}>
+                        {completionPhotos.length}/5
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
@@ -1036,6 +1056,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#B8FF00',
+  },
+  photoCountText: {
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 4,
   },
   questMeta: {
     flexDirection: 'row',

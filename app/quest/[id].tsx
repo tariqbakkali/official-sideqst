@@ -29,6 +29,7 @@ import {
   Circle
 } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
+import { PhotoCarousel, FullscreenPhotoViewer } from '@/components/PhotoCarousel';
 
 interface QuestWithCategory extends Quest {
   quest_categories?: {
@@ -49,6 +50,15 @@ export default function QuestDetailScreen() {
   const [questSteps, setQuestSteps] = useState<QuestStep[]>([]);
   const [stepProgress, setStepProgress] = useState<QuestStepProgress[]>([]);
   const [isUserQuest, setIsUserQuest] = useState(false);
+  const [fullscreenPhotos, setFullscreenPhotos] = useState<string[]>([]);
+  const [fullscreenInitialIndex, setFullscreenInitialIndex] = useState(0);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+
+  const handlePhotoPress = (photos: string[], index: number) => {
+    setFullscreenPhotos(photos);
+    setFullscreenInitialIndex(index);
+    setFullscreenVisible(true);
+  };
 
   useEffect(() => {
     if (id) {
@@ -289,14 +299,19 @@ export default function QuestDetailScreen() {
     );
   }
 
-  const imageUrl = quest.completion_photo_url || quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
+  const headerPhoto = quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
+  const completionPhotos = quest.completion_photos && quest.completion_photos.length > 0
+    ? quest.completion_photos
+    : quest.completion_photo_url
+    ? [quest.completion_photo_url]
+    : [];
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
           <ImageBackground
-            source={{ uri: imageUrl }}
+            source={{ uri: headerPhoto }}
             style={styles.heroImage}
             imageStyle={styles.heroImageStyle}
           >
@@ -344,6 +359,14 @@ export default function QuestDetailScreen() {
                     })}
                   </Text>
                 </View>
+                {completionPhotos.length > 0 && (
+                  <View style={styles.completionPhotosContainer}>
+                    <PhotoCarousel
+                      photos={completionPhotos}
+                      onPhotoPress={(index) => handlePhotoPress(completionPhotos, index)}
+                    />
+                  </View>
+                )}
                 {quest.completion_notes && (
                   <>
                     <Text style={styles.completionNotesLabel}>My Experience</Text>
@@ -503,6 +526,13 @@ export default function QuestDetailScreen() {
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
       </View>
+
+      <FullscreenPhotoViewer
+        photos={fullscreenPhotos}
+        initialIndex={fullscreenInitialIndex}
+        visible={fullscreenVisible}
+        onClose={() => setFullscreenVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -786,6 +816,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#B8FF00',
     fontWeight: '600',
+  },
+  completionPhotosContainer: {
+    marginBottom: 16,
   },
   completionNotesLabel: {
     fontSize: 14,
