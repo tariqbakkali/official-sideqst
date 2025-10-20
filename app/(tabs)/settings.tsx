@@ -9,6 +9,7 @@ import {
   Switch,
   Alert,
   Linking,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -125,6 +126,15 @@ export default function SettingsScreen() {
     router.push('/profile/edit');
   };
 
+  const getInitials = () => {
+    const name = userProfile?.display_name || user?.user_metadata?.full_name || user?.email || '';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase() || 'U';
+  };
+
   const handleSettingPress = (title: string) => {
     switch (title) {
       case 'Notifications':
@@ -209,7 +219,13 @@ export default function SettingsScreen() {
         <View style={styles.profileSection}>
         <View style={styles.profileInfo}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>AK</Text>
+            {userProfile?.avatar_url ? (
+              <Image source={{ uri: userProfile.avatar_url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {getInitials()}
+              </Text>
+            )}
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
@@ -373,6 +389,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#0a0a0a',
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   userInfo: {
     flex: 1,
