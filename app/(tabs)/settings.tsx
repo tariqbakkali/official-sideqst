@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,13 @@ import {
   SafeAreaView,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bell, CircleHelp as HelpCircle, Star, Share2, LogOut, ChevronRight } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
 
 const settingsData = [
   {
@@ -32,16 +35,75 @@ const settingsData = [
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
-  const [toggleValues, setToggleValues] = React.useState({
+  const [toggleValues, setToggleValues] = useState({
     notifications: true,
     darkMode: true,
   });
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [questStats, setQuestStats] = useState({ completed: 0, created: 0 });
 
-  const handleToggle = (key: string) => {
+  useEffect(() => {
+    if (user) {
+      loadUserProfile();
+      loadQuestStats();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading profile:', error);
+      } else if (data) {
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
+  const loadQuestStats = async () => {
+    try {
+      const [completedRes, createdRes] = await Promise.all([
+        supabase
+          .from('user_quest_progress')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user?.id)
+          .eq('status', 'completed'),
+        supabase
+          .from('quests')
+          .select('id', { count: 'exact', head: true })
+          .eq('created_by', user?.id)
+      ]);
+
+      setQuestStats({
+        completed: completedRes.count || 0,
+        created: createdRes.count || 0,
+      });
+    } catch (error) {
+      console.error('Error loading quest stats:', error);
+    }
+  };
+
+  const handleToggle = async (key: string) => {
+    const newValue = !toggleValues[key as keyof typeof toggleValues];
     setToggleValues(prev => ({
       ...prev,
-      [key]: !prev[key as keyof typeof prev],
+      [key]: newValue,
     }));
+
+    if (key === 'notifications') {
+      Alert.alert(
+        'Notifications',
+        newValue ? 'Notifications enabled' : 'Notifications disabled',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleSignOut = () => {
@@ -63,25 +125,104 @@ export default function SettingsScreen() {
     router.push('/profile/edit');
   };
 
+  const handleSettingPress = (title: string) => {
+    switch (title) {
+      case 'Notifications':
+        handleToggle('notifications');
+        break;
+      case 'Help & Support':
+        handleHelpSupport();
+        break;
+      case 'Rate App':
+        handleRateApp();
+        break;
+      case 'Share App':
+        handleShareApp();
+        break;
+    }
+  };
+
+  const handleHelpSupport = () => {
+    Alert.alert(
+      'Help & Support',
+      'How can we help you?',
+      [
+        {
+          text: 'Email Support',
+          onPress: () => Linking.openURL('mailto:support@sidequests.app')
+        },
+        {
+          text: 'FAQ',
+          onPress: () => Alert.alert('FAQ', 'Coming soon!')
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleRateApp = () => {
+    Alert.alert(
+      'Rate SideQuests',
+      'Enjoying SideQuests? Please rate us on the App Store!',
+      [
+        {
+          text: 'Rate Now',
+          onPress: () => {
+            Alert.alert('Thank you!', 'This would open the App Store in a real app.');
+          }
+        },
+        { text: 'Maybe Later', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleShareApp = async () => {
+    try {
+      const message = 'Check out SideQuests - Turn everyday moments into epic adventures! 🎯';
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync('https://sidequests.app', {
+          dialogTitle: 'Share SideQuests',
+        });
+      } else {
+        Alert.alert(
+          'Share SideQuests',
+          message,
+          [
+            { text: 'Copy Link', onPress: () => Alert.alert('Link copied!') },
+            { text: 'Close', style: 'cancel' },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
-      <View style={styles.profileSection}>
+      <View style={styles.profileCard}>
+        <View style={styles.profileSection}>
         <View style={styles.profileInfo}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>AK</Text>
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
-              {user?.user_metadata?.full_name || 'User'}
+              {userProfile?.display_name || user?.user_metadata?.full_name || 'User'}
             </Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
             <View style={styles.badgeContainer}>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>Quest Master</Text>
+                <Text style={styles.badgeText}>
+                  {questStats.completed >= 50 ? 'Quest Legend' :
+                   questStats.completed >= 20 ? 'Quest Master' :
+                   questStats.completed >= 5 ? 'Adventurer' : 'Novice'}
+                </Text>
               </View>
             </View>
           </View>
@@ -91,20 +232,29 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.statsSection}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{questStats.completed}</Text>
+          <Text style={styles.statLabel}>Completed</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{questStats.created}</Text>
+          <Text style={styles.statLabel}>Created</Text>
+        </View>
+      </View>
+    </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingsData.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
             
             {section.items.map((item, itemIndex) => (
-              <TouchableOpacity 
-                key={itemIndex} 
+              <TouchableOpacity
+                key={itemIndex}
                 style={styles.settingItem}
-                onPress={() => {
-                  if (item.hasToggle) {
-                    handleToggle(item.title.toLowerCase().replace(/\s/g, ''));
-                  }
-                }}
+                onPress={() => handleSettingPress(item.title)}
               >
                 <View style={styles.settingLeft}>
                   <View style={styles.iconContainer}>
@@ -165,16 +315,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
   },
+  profileCard: {
+    backgroundColor: '#1a1a1a',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    backgroundColor: '#1a1a1a',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
+  },
+  statsSection: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#B8FF00',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#333333',
+    marginHorizontal: 16,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -182,16 +361,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#B8FF00',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#0a0a0a',
   },

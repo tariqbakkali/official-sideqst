@@ -19,12 +19,10 @@ import { ArrowLeft, User, Mail, Calendar, Camera, Upload } from 'lucide-react-na
 import * as ImagePicker from 'expo-image-picker';
 
 interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  avatar: string;
-  year_of_birth: number | null;
+  user_id: string;
+  display_name: string;
+  bio: string;
+  avatar_url: string;
 }
 
 export default function EditProfileScreen() {
@@ -32,12 +30,10 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [profile, setProfile] = useState<Profile>({
-    id: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    avatar: '',
-    year_of_birth: null,
+    user_id: '',
+    display_name: '',
+    bio: '',
+    avatar_url: '',
   });
 
   useEffect(() => {
@@ -51,38 +47,28 @@ export default function EditProfileScreen() {
 
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No profile found, create default profile
-          console.log('No profile found, creating default profile');
-          const defaultProfile = {
-            id: user.id,
-            first_name: user.user_metadata?.full_name?.split(' ')[0] || '',
-            last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-            email: user.email || '',
-            avatar: '',
-            year_of_birth: null,
-          };
-          
-          setProfile(defaultProfile);
-          return;
-        }
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
 
       if (data) {
         setProfile({
-          id: data.id,
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          email: data.email || user.email || '',
-          avatar: data.avatar || '',
-          year_of_birth: data.year_of_birth,
+          user_id: data.user_id,
+          display_name: data.display_name || '',
+          bio: data.bio || '',
+          avatar_url: data.avatar_url || '',
+        });
+      } else {
+        setProfile({
+          user_id: user.id,
+          display_name: user.user_metadata?.full_name || '',
+          bio: '',
+          avatar_url: '',
         });
       }
     } catch (error) {
@@ -148,7 +134,7 @@ export default function EditProfileScreen() {
         .getPublicUrl(filePath);
 
       // Update profile with new avatar URL
-      setProfile({ ...profile, avatar: publicUrl });
+      setProfile({ ...profile, avatar_url: publicUrl });
       
       Alert.alert('Success', 'Avatar uploaded successfully!');
     } catch (error: any) {
@@ -163,27 +149,20 @@ export default function EditProfileScreen() {
     if (!user) return;
 
     // Validation
-    if (!profile.first_name.trim()) {
-      Alert.alert('Error', 'First name is required');
-      return;
-    }
-
-    if (profile.year_of_birth && (profile.year_of_birth < 1900 || profile.year_of_birth > new Date().getFullYear())) {
-      Alert.alert('Error', 'Please enter a valid birth year');
+    if (!profile.display_name.trim()) {
+      Alert.alert('Error', 'Display name is required');
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .upsert({
-          id: user.id,
-          first_name: profile.first_name.trim(),
-          last_name: profile.last_name.trim(),
-          email: profile.email,
-          avatar: profile.avatar.trim(),
-          year_of_birth: profile.year_of_birth,
+          user_id: user.id,
+          display_name: profile.display_name.trim(),
+          bio: profile.bio.trim(),
+          avatar_url: profile.avatar_url.trim(),
           updated_at: new Date().toISOString(),
         });
 
@@ -200,13 +179,16 @@ export default function EditProfileScreen() {
   };
 
   const getDisplayName = () => {
-    return `${profile.first_name} ${profile.last_name}`.trim() || 'User';
+    return profile.display_name || 'User';
   };
 
   const getInitials = () => {
-    const firstName = profile.first_name.trim();
-    const lastName = profile.last_name.trim();
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
+    const name = profile.display_name.trim();
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase() || 'U';
   };
 
   return (
@@ -234,8 +216,8 @@ export default function EditProfileScreen() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
-              {profile.avatar && profile.avatar.startsWith('http') ? (
-                <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
+              {profile.avatar_url && profile.avatar_url.startsWith('http') ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
               ) : (
                 <Text style={styles.avatarText}>{getInitials()}</Text>
               )}
@@ -254,33 +236,19 @@ export default function EditProfileScreen() {
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>First Name *</Text>
+              <Text style={styles.label}>Display Name *</Text>
               <View style={styles.inputContainer}>
                 <User size={20} color="#888888" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your first name"
+                  placeholder="Enter your display name"
                   placeholderTextColor="#888888"
-                  value={profile.first_name}
-                  onChangeText={(text) => setProfile({ ...profile, first_name: text })}
+                  value={profile.display_name}
+                  onChangeText={(text) => setProfile({ ...profile, display_name: text })}
                   autoCapitalize="words"
                 />
               </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Last Name</Text>
-              <View style={styles.inputContainer}>
-                <User size={20} color="#888888" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your last name"
-                  placeholderTextColor="#888888"
-                  value={profile.last_name}
-                  onChangeText={(text) => setProfile({ ...profile, last_name: text })}
-                  autoCapitalize="words"
-                />
-              </View>
+              <Text style={styles.helperText}>This is how others will see your name</Text>
             </View>
 
             <View style={styles.inputGroup}>
@@ -289,7 +257,7 @@ export default function EditProfileScreen() {
                 <Mail size={20} color="#666666" style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, styles.disabledInputText]}
-                  value={profile.email}
+                  value={user?.email || ''}
                   editable={false}
                 />
               </View>
@@ -297,23 +265,21 @@ export default function EditProfileScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Year of Birth</Text>
-              <View style={styles.inputContainer}>
-                <Calendar size={20} color="#888888" style={styles.inputIcon} />
+              <Text style={styles.label}>Bio</Text>
+              <View style={[styles.inputContainer, styles.textAreaContainer]}>
                 <TextInput
-                  style={styles.input}
-                  placeholder="1990"
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Tell others about yourself..."
                   placeholderTextColor="#888888"
-                  value={profile.year_of_birth?.toString() || ''}
-                  onChangeText={(text) => {
-                    const year = text ? parseInt(text) : null;
-                    setProfile({ ...profile, year_of_birth: year });
-                  }}
-                  keyboardType="numeric"
-                  maxLength={4}
+                  value={profile.bio}
+                  onChangeText={(text) => setProfile({ ...profile, bio: text })}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  maxLength={200}
                 />
               </View>
-              <Text style={styles.helperText}>Optional: Used for age-appropriate quest recommendations</Text>
+              <Text style={styles.helperText}>{profile.bio.length}/200 characters</Text>
             </View>
           </View>
 
@@ -321,19 +287,17 @@ export default function EditProfileScreen() {
             <Text style={styles.previewTitle}>Profile Preview</Text>
             <View style={styles.previewCard}>
               <View style={styles.previewAvatar}>
-                {profile.avatar && profile.avatar.startsWith('http') ? (
-                  <Image source={{ uri: profile.avatar }} style={styles.previewAvatarImage} />
+                {profile.avatar_url && profile.avatar_url.startsWith('http') ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.previewAvatarImage} />
                 ) : (
                   <Text style={styles.previewAvatarText}>{getInitials()}</Text>
                 )}
               </View>
               <View style={styles.previewInfo}>
                 <Text style={styles.previewName}>{getDisplayName()}</Text>
-                <Text style={styles.previewEmail}>{profile.email}</Text>
-                {profile.year_of_birth && (
-                  <Text style={styles.previewAge}>
-                    Age: {new Date().getFullYear() - profile.year_of_birth}
-                  </Text>
+                <Text style={styles.previewEmail}>{user?.email}</Text>
+                {profile.bio && (
+                  <Text style={styles.previewBio}>{profile.bio}</Text>
                 )}
               </View>
             </View>
@@ -523,9 +487,16 @@ const styles = StyleSheet.create({
     color: '#888888',
     marginTop: 2,
   },
-  previewAge: {
+  previewBio: {
     fontSize: 12,
-    color: '#B8FF00',
+    color: '#888888',
     marginTop: 4,
+  },
+  textAreaContainer: {
+    paddingVertical: 12,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
 });
