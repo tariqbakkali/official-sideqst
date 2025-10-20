@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, Filter, Target, Clock, MapPin, CircleCheck as CheckCircle, X, Camera, Save } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { questService, Quest } from '@/services/questService';
+import { storageService } from '@/services/storageService';
 import * as ImagePicker from 'expo-image-picker';
 
 const handleQuestPress = (questId: string) => {
@@ -56,29 +57,9 @@ export default function QuestsScreen() {
   const [completionNotes, setCompletionNotes] = useState('');
   const [completionPhoto, setCompletionPhoto] = useState<string | null>(null);
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
-  const [completionPhotoUri, setCompletionPhotoUri] = useState<string | null>(null);
   const [startingQuests, setStartingQuests] = useState<Set<string>>(new Set());
 
   const { wishlistService } = require('@/services/wishlistService');
-
-  const pickCompletionPhoto = useCallback(async () => {
-    // Ask permission (safe on web/native)
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      console.warn("Permission to access media library was denied");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets?.length) {
-      setCompletionPhotoUri(result.assets[0].uri);
-    }
-  }, []);
 
   useEffect(() => {
     loadQuests();
@@ -123,7 +104,7 @@ export default function QuestsScreen() {
 
   const handleCompleteQuest = async () => {
     if (!selectedQuestForCompletion || submittingCompletion) return;
-    
+
     if (!completionNotes.trim()) {
       Alert.alert('Required', 'Please add some notes about completing this quest');
       return;
@@ -131,21 +112,30 @@ export default function QuestsScreen() {
 
     setSubmittingCompletion(true);
     try {
+      let photoUrl: string | undefined = undefined;
+
+      if (completionPhoto) {
+        try {
+          photoUrl = await storageService.uploadPhoto(completionPhoto);
+        } catch (uploadError) {
+          console.error('Error uploading photo:', uploadError);
+          Alert.alert('Warning', 'Failed to upload photo, but quest will still be completed');
+        }
+      }
+
       await questService.completeQuest(
         selectedQuestForCompletion.id,
         completionNotes.trim(),
-        completionPhoto || undefined
+        photoUrl
       );
-      
-      // Remove from active quests
+
       setUserQuests(quests => quests.filter(q => q.id !== selectedQuestForCompletion.id));
-      
-      // Close modal and reset state
+
       setCompletionModalVisible(false);
       setSelectedQuestForCompletion(null);
       setCompletionNotes('');
       setCompletionPhoto(null);
-      
+
       Alert.alert('🎉 Quest Completed!', 'Your quest has been moved to your journal');
     } catch (error) {
       console.error('Error completing quest:', error);
@@ -641,7 +631,7 @@ export default function QuestsScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.addPhotoButton} onPress={pickCompletionPhoto}>
+                  <TouchableOpacity style={styles.addPhotoButton} onPress={addCompletionPhoto}>
                     <Camera size={32} color="#B8FF00" />
                     <Text style={styles.addPhotoText}>Add Photo</Text>
                   </TouchableOpacity>
