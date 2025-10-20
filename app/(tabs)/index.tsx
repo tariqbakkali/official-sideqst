@@ -298,13 +298,13 @@ export default function FeedScreen() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('photo_url')
+        .select('avatar_url')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
-      if (data?.photo_url) {
-        setProfilePhotoUrl(data.photo_url);
+      if (data?.avatar_url) {
+        setProfilePhotoUrl(data.avatar_url);
       }
     } catch (error) {
       console.error('Error loading profile photo:', error);
