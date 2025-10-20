@@ -58,6 +58,10 @@ export default function QuestsScreen() {
   const [completionPhotos, setCompletionPhotos] = useState<string[]>([]);
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [startingQuests, setStartingQuests] = useState<Set<string>>(new Set());
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allQuests, setAllQuests] = useState<QuestWithCategory[]>([]);
+  const [searchResults, setSearchResults] = useState<QuestWithCategory[]>([]);
 
   const { wishlistService } = require('@/services/wishlistService');
 
@@ -67,14 +71,15 @@ export default function QuestsScreen() {
 
   const loadQuests = async () => {
     try {
-      const [userQuestsData, publicQuestsData] = await Promise.all([
+      const [userQuestsData, allQuestsData] = await Promise.all([
         questService.getUserQuests(),
-        questService.getPublicQuests(10),
+        questService.getPublicQuests(100),
       ]);
-      
+
       setUserQuests(userQuestsData);
-      setPublicQuests(publicQuestsData);
-      
+      setPublicQuests(allQuestsData.slice(0, 10));
+      setAllQuests(allQuestsData);
+
       // Load wishlist if wishlist tab might be accessed
       if (activeTab === 'wishlist') {
         await loadWishlist();
@@ -263,6 +268,96 @@ export default function QuestsScreen() {
 
   const removeCompletionPhoto = (index: number) => {
     setCompletionPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    const results = allQuests.filter(quest => {
+      return (
+        quest.name.toLowerCase().includes(lowerQuery) ||
+        quest.description.toLowerCase().includes(lowerQuery) ||
+        quest.quest_categories?.name.toLowerCase().includes(lowerQuery) ||
+        getLocationDisplay(quest).toLowerCase().includes(lowerQuery)
+      );
+    });
+
+    setSearchResults(results);
+  };
+
+  const renderSearchResults = () => {
+    if (!searchQuery.trim()) {
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>Search for quests</Text>
+          <Text style={styles.emptyStateSubtext}>Try searching by name, category, or location</Text>
+        </View>
+      );
+    }
+
+    if (searchResults.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No quests found</Text>
+          <Text style={styles.emptyStateSubtext}>Try different keywords</Text>
+        </View>
+      );
+    }
+
+    return searchResults.map((quest) => {
+      const imageUrl = quest.photo_url || 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
+
+      return (
+        <View key={quest.id} style={styles.activeQuestCard}>
+          <TouchableOpacity
+            onPress={() => handleQuestPress(quest.id)}
+            activeOpacity={0.9}
+          >
+            <ImageBackground
+              source={{ uri: imageUrl }}
+              style={styles.questImage}
+              imageStyle={styles.questImageStyle}
+            >
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.8)']}
+                style={styles.gradient}
+              >
+                <View style={styles.questInfo}>
+                  <Text style={styles.questTitle}>{quest.name}</Text>
+                  <Text style={styles.questDescription}>{quest.description}</Text>
+
+                  <View style={styles.locationRow}>
+                    <MapPin size={12} color="#B8FF00" />
+                    <Text style={styles.locationText}>{getLocationDisplay(quest)}</Text>
+                  </View>
+
+                  <View style={styles.questMeta}>
+                    <View style={styles.metaItem}>
+                      <Text style={styles.categoryBadge}>{quest.quest_categories?.icon || '⚡'}</Text>
+                      <Text style={styles.metaText}>{quest.quest_categories?.name || 'Quest'}</Text>
+                    </View>
+                    <View style={styles.metaItem}>
+                      <Target size={16} color="#B8FF00" />
+                      <Text style={styles.metaText}>{getDifficultyLabel(quest.difficulty)}</Text>
+                    </View>
+                    <View style={styles.metaItem}>
+                      <Clock size={16} color="#B8FF00" />
+                      <Text style={styles.metaText}>{getDurationDisplay(quest)}</Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
+          </TouchableOpacity>
+        </View>
+      );
+    });
   };
 
   const getLocationDisplay = (quest: Quest) => {
@@ -534,66 +629,101 @@ export default function QuestsScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Your Quests</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setSearchVisible(!searchVisible)}
+          >
             <Search size={20} color="#ffffff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Filter size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'active' && styles.activeTab]}
-          onPress={() => setActiveTab('active')}
-        >
-          <Text style={[styles.tabText, activeTab === 'active' && styles.activeTabText]}>
-            Active
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'discover' && styles.activeTab]}
-          onPress={() => setActiveTab('discover')}
-        >
-          <Text style={[styles.tabText, activeTab === 'discover' && styles.activeTabText]}>
-            Discover
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'wishlist' && styles.activeTab]}
-          onPress={() => {
-            setActiveTab('wishlist');
-            if (wishlistItems.length === 0) {
-              loadWishlist();
-            }
-          }}
-        >
-          <Text style={[styles.tabText, activeTab === 'wishlist' && styles.activeTabText]}>
-            Wishlist
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {searchVisible && (
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Search size={20} color="#888888" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search quests..."
+              placeholderTextColor="#888888"
+              value={searchQuery}
+              onChangeText={handleSearch}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleSearch('')}>
+                <X size={20} color="#888888" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
 
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {activeTab === 'active' ? (
+
+      {searchVisible ? (
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.section}>
-            {renderActiveQuests()}
+            {renderSearchResults()}
           </View>
-        ) : activeTab === 'wishlist' ? (
-          <View style={styles.section}>
-            {renderWishlistQuests()}
+        </ScrollView>
+      ) : (
+        <>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'active' && styles.activeTab]}
+              onPress={() => setActiveTab('active')}
+            >
+              <Text style={[styles.tabText, activeTab === 'active' && styles.activeTabText]}>
+                Active
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'discover' && styles.activeTab]}
+              onPress={() => setActiveTab('discover')}
+            >
+              <Text style={[styles.tabText, activeTab === 'discover' && styles.activeTabText]}>
+                Discover
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'wishlist' && styles.activeTab]}
+              onPress={() => {
+                setActiveTab('wishlist');
+                if (wishlistItems.length === 0) {
+                  loadWishlist();
+                }
+              }}
+            >
+              <Text style={[styles.tabText, activeTab === 'wishlist' && styles.activeTabText]}>
+                Wishlist
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          renderDiscoverContent()
-        )}
-      </ScrollView>
+
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            {activeTab === 'active' ? (
+              <View style={styles.section}>
+                {renderActiveQuests()}
+              </View>
+            ) : activeTab === 'wishlist' ? (
+              <View style={styles.section}>
+                {renderWishlistQuests()}
+              </View>
+            ) : (
+              renderDiscoverContent()
+            )}
+          </ScrollView>
+        </>
+      )}
 
       <Modal
         visible={completionModalVisible}
@@ -1165,5 +1295,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
     textAlign: 'center',
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#ffffff',
   },
 });
