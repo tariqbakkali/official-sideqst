@@ -241,13 +241,29 @@ export default function QuestDetailScreen() {
           completed_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
         };
+
+        let updatedProgress: QuestStepProgress[];
         setStepProgress(prev => {
           const existingIndex = prev.findIndex(p => p.step_order === stepOrder);
           if (existingIndex >= 0) {
-            return prev.map((p, i) => i === existingIndex ? newProgress : p);
+            updatedProgress = prev.map((p, i) => i === existingIndex ? newProgress : p);
+          } else {
+            updatedProgress = [...prev, newProgress];
           }
-          return [...prev, newProgress];
+          return updatedProgress;
         });
+
+        // Check if all steps are now completed
+        setTimeout(() => {
+          const allStepsCompleted = questSteps.every(step =>
+            updatedProgress.some(p => p.step_order === step.step_order && p.completed_at)
+          );
+
+          if (allStepsCompleted && quest && !quest.is_completed) {
+            // Auto-complete the quest
+            handleCompleteQuest();
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error toggling step:', error);
@@ -257,6 +273,30 @@ export default function QuestDetailScreen() {
 
   const isStepCompleted = (stepOrder: number) => {
     return stepProgress.some(p => p.step_order === stepOrder && p.completed_at);
+  };
+
+  const getNextIncompleteStep = () => {
+    if (questSteps.length === 0) return null;
+    return questSteps.find(step => !isStepCompleted(step.step_order));
+  };
+
+  const areAllStepsCompleted = () => {
+    if (questSteps.length === 0) return false;
+    return questSteps.every(step => isStepCompleted(step.step_order));
+  };
+
+  const handleCompleteQuest = async () => {
+    if (!quest || !id) return;
+
+    try {
+      await questService.completeQuest(id, '', undefined);
+      setQuest(prev => prev ? { ...prev, is_completed: true, completed_at: new Date().toISOString() } : null);
+      Alert.alert('Quest Completed!', 'Congratulations on completing this quest!');
+      router.back();
+    } catch (error) {
+      console.error('Error completing quest:', error);
+      Alert.alert('Error', 'Failed to complete quest');
+    }
   };
 
   if (loading) {

@@ -58,6 +58,7 @@ export default function QuestsScreen() {
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [completionPhotoUri, setCompletionPhotoUri] = useState<string | null>(null);
   const [startingQuests, setStartingQuests] = useState<Set<string>>(new Set());
+  const [questStepsData, setQuestStepsData] = useState<Record<string, { total: number; completed: number; nextStep?: string }>>({})
 
   const { wishlistService } = require('@/services/wishlistService');
 
@@ -90,10 +91,13 @@ export default function QuestsScreen() {
         questService.getUserQuests(),
         questService.getPublicQuests(10),
       ]);
-      
+
       setUserQuests(userQuestsData);
       setPublicQuests(publicQuestsData);
-      
+
+      // Load quest steps data for user quests
+      await loadQuestStepsData(userQuestsData);
+
       // Load wishlist if wishlist tab might be accessed
       if (activeTab === 'wishlist') {
         await loadWishlist();
@@ -102,6 +106,38 @@ export default function QuestsScreen() {
       console.error('Error loading quests:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadQuestStepsData = async (quests: QuestWithCategory[]) => {
+    try {
+      const stepsDataMap: Record<string, { total: number; completed: number; nextStep?: string }> = {};
+
+      for (const quest of quests) {
+        const steps = await questService.getQuestSteps(quest.id);
+        if (steps.length > 0) {
+          const progress = await questService.getUserQuestStepProgress(quest.id);
+          const completedCount = progress.filter(p => p.completed_at).length;
+          const nextIncompleteStep = steps.find(step =>
+            !progress.some(p => p.step_order === step.step_order && p.completed_at)
+          );
+
+          stepsDataMap[quest.id] = {
+            total: steps.length,
+            completed: completedCount,
+            nextStep: nextIncompleteStep?.title,
+          };
+
+          // Auto-complete quest if all steps are done
+          if (completedCount === steps.length && !quest.is_completed) {
+            await questService.completeQuest(quest.id, '', undefined);
+          }
+        }
+      }
+
+      setQuestStepsData(stepsDataMap);
+    } catch (error) {
+      console.error('Error loading quest steps data:', error);
     }
   };
 
@@ -330,15 +366,33 @@ export default function QuestsScreen() {
           </TouchableOpacity>
           
           <View style={styles.questActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.completeButton}
               onPress={() => {
-                setSelectedQuestForCompletion(quest);
-                setCompletionModalVisible(true);
+                const stepsData = questStepsData[quest.id];
+                if (stepsData && stepsData.completed < stepsData.total) {
+                  // Has steps and not all completed - navigate to detail view
+                  handleQuestPress(quest.id);
+                } else {
+                  // No steps or all steps completed - show completion modal
+                  setSelectedQuestForCompletion(quest);
+                  setCompletionModalVisible(true);
+                }
               }}
             >
               <CheckCircle size={16} color="#0a0a0a" />
-              <Text style={styles.completeButtonText}>Complete</Text>
+              <Text style={styles.completeButtonText}>
+                {(() => {
+                  const stepsData = questStepsData[quest.id];
+                  if (stepsData) {
+                    if (stepsData.completed < stepsData.total) {
+                      return `Complete Step ${stepsData.completed + 1}/${stepsData.total}`;
+                    }
+                    return 'Complete';
+                  }
+                  return 'Complete';
+                })()}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.removeButton}>
               <Text style={styles.removeButtonText}>Remove</Text>
