@@ -260,10 +260,20 @@ export default function FeedScreen() {
     applyFilters();
   }, [quests, activeFilters]);
 
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   const loadQuests = async () => {
     try {
       const data = await questService.getPublicQuests(20);
-      setQuests(data);
+      const shuffledData = shuffleArray(data);
+      setQuests(shuffledData);
     } catch (error) {
       console.error('Error loading quests:', error);
     } finally {
