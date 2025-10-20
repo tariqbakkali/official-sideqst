@@ -154,32 +154,38 @@ const QuestCard = ({ quest, style }: { quest: QuestWithCategory; style: any }) =
         imageStyle={styles.questImageStyle}
       >
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          colors={['transparent', 'rgba(0,0,0,0.9)']}
           style={styles.gradient}
         >
           <View style={styles.questInfo}>
             <Text style={styles.questTitle} numberOfLines={2}>{quest.name}</Text>
-            <Text style={styles.questDescription} numberOfLines={2}>{quest.description}</Text>
-            
-            <View style={styles.locationRow}>
-              <MapPin size={12} color="#B8FF00" />
-              <Text style={styles.locationText}>{getLocationDisplay()}</Text>
-            </View>
-            
-            <View style={styles.questMeta}>
-              <View style={styles.metaItem}>
-                <Text style={styles.categoryBadge}>{quest.quest_categories?.icon || '⚡'}</Text>
-                <Text style={styles.metaValue}>{quest.quest_categories?.name || 'Quest'}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Target size={12} color="#B8FF00" />
-                <Text style={styles.metaValue}>{getDifficultyLabel(quest.difficulty)}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Clock size={12} color="#B8FF00" />
-                <Text style={styles.metaValue}>{getDurationDisplay()}</Text>
-              </View>
-            </View>
+            {isLargeCard && (
+              <Text style={styles.questDescription} numberOfLines={2}>{quest.description}</Text>
+            )}
+
+            {isLargeCard && (
+              <>
+                <View style={styles.locationRow}>
+                  <MapPin size={12} color="#B8FF00" />
+                  <Text style={styles.locationText}>{getLocationDisplay()}</Text>
+                </View>
+
+                <View style={styles.questMeta}>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.categoryBadge}>{quest.quest_categories?.icon || '⚡'}</Text>
+                    <Text style={styles.metaValue}>{quest.quest_categories?.name || 'Quest'}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Target size={12} color="#B8FF00" />
+                    <Text style={styles.metaValue}>{getDifficultyLabel(quest.difficulty)}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Clock size={12} color="#B8FF00" />
+                    <Text style={styles.metaValue}>{getDurationDisplay()}</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </LinearGradient>
       </ImageBackground>
@@ -563,10 +569,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   questTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   questDescription: {
     fontSize: 12,
