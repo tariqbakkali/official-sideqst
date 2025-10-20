@@ -17,7 +17,7 @@ import { questService, Quest } from '@/services/questService';
 
 interface CompletedQuest extends Quest {
   completed_at: string;
-  completion_notes: string;
+  completion_notes?: string;
   completion_photo_url?: string;
   quest_categories?: {
     name: string;
@@ -41,7 +41,7 @@ export default function JournalScreen() {
   const loadJournalData = async () => {
     try {
       const completed = await questService.getCompletedQuests();
-      setCompletedQuests(completed);
+      setCompletedQuests(completed as CompletedQuest[]);
     } catch (error) {
       console.error('Error loading journal data:', error);
     } finally {

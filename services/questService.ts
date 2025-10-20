@@ -20,8 +20,8 @@ export interface Quest {
   is_completed?: boolean;
   completed_at?: string;
   completion_notes?: string;
-  completion_photos?: string;
-  is_completed?: boolean;
+  completion_photo_url?: string;
+  created_at?: string;
 }
 
 export interface CreateQuestData {

@@ -134,7 +134,7 @@ export default function QuestsScreen() {
       await questService.completeQuest(
         selectedQuestForCompletion.id,
         completionNotes.trim(),
-        completionPhoto ? [completionPhoto] : []
+        completionPhoto || undefined
       );
       
       // Remove from active quests
@@ -1114,7 +1114,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
-    backdropFilter: 'blur(10px)',
   },
   secondaryButtonText: {
     fontSize: 14,
