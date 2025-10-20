@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderRadius: 20,
     overflow: 'hidden',
-    width: '100%',
+    width: '85%',
     borderWidth: 1.5,
     borderColor: '#2a2a2a',
     shadowColor: '#000',
