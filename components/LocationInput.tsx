@@ -54,17 +54,22 @@ export default function LocationInput({
     }
   };
 
+  useEffect(() => {
+    if (locationType !== 'address') {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchAddresses(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, locationType]);
+
   const handleTextChange = (text: string) => {
     setSearchQuery(text);
-    
-    if (locationType === 'address') {
-      // Debounce the search
-      const timeoutId = setTimeout(() => {
-        searchAddresses(text);
-      }, 300);
-      
-      return () => clearTimeout(timeoutId);
-    } else {
+
+    if (locationType !== 'address') {
       // For 'online' type, just update the text
       onLocationChange(text);
     }
@@ -75,10 +80,13 @@ export default function LocationInput({
       latitude: parseFloat(suggestion.lat),
       longitude: parseFloat(suggestion.lon),
     };
-    
-    setSearchQuery(suggestion.display_name);
+
+    // Close suggestions immediately
     setShowSuggestions(false);
     setSuggestions([]);
+
+    // Update text and call parent
+    setSearchQuery(suggestion.display_name);
     onLocationChange(suggestion.display_name, coordinates);
   };
 
@@ -158,7 +166,8 @@ export default function LocationInput({
               </TouchableOpacity>
             )}
             style={styles.suggestionsList}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
+            nestedScrollEnabled
           />
         </View>
       )}
@@ -169,6 +178,7 @@ export default function LocationInput({
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
+    zIndex: 1000,
   },
   anywhereContainer: {
     flexDirection: 'row',
@@ -213,15 +223,20 @@ const styles = StyleSheet.create({
   },
   suggestionsContainer: {
     position: 'absolute',
-    top: '100%',
+    top: 72,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 10000,
+    elevation: 10000,
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#333333',
     maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
   },
   suggestionsList: {
     maxHeight: 200,
